@@ -36,14 +36,14 @@ export default function PricingCard({
         body: JSON.stringify({ passType, resellerId }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || "Failed to start checkout");
       }
 
-      const { url } = await res.json();
-      if (url) {
-        window.location.href = url;
+      if (data.url) {
+        window.location.href = data.url;
       }
     } catch (err) {
       console.error("Checkout error:", err);
