@@ -7,6 +7,11 @@ export const dynamic = "force-dynamic";
 
 /* ── Agenda types & helpers ── */
 
+interface MediaItem {
+  type: string;
+  link: string;
+}
+
 interface AgendaEvent {
   id: string;
   date_start: string;
@@ -22,10 +27,7 @@ interface AgendaEvent {
       en?: { name?: string };
     };
   };
-  media?: {
-    poster?: string;
-    photo?: string[];
-  };
+  media?: MediaItem[];
 }
 
 async function getEvents(): Promise<AgendaEvent[]> {
@@ -44,6 +46,14 @@ async function getEvents(): Promise<AgendaEvent[]> {
   } catch {
     return [];
   }
+}
+
+function getEventImage(event: AgendaEvent): string {
+  if (!event.media || !Array.isArray(event.media)) return "";
+  const poster = event.media.find((m) => m.type === "poster");
+  if (poster?.link) return poster.link;
+  const photo = event.media.find((m) => m.type === "photo");
+  return photo?.link || "";
 }
 
 function formatDate(dateStr: string): string {
@@ -136,62 +146,16 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Right — hero image collage */}
+          {/* Right — hero image */}
           <div className="flex-1 w-full max-w-md lg:max-w-lg">
-            {clubs.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                {clubs.slice(0, 4).map((club) => (
-                  <div key={club.id} className="aspect-square bg-white/10">
-                    {club.pictures?.[0] && (
-                      <img
-                        src={club.pictures[0]}
-                        alt={club.name}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                <div className="aspect-square">
-                  <Image
-                    src="/clubs/fuse.jpg"
-                    alt="Fuse"
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="aspect-square">
-                  <Image
-                    src="/clubs/c12.jpg"
-                    alt="C12"
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="aspect-square">
-                  <Image
-                    src="/clubs/spirito.jpg"
-                    alt="Spirito"
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="aspect-square">
-                  <Image
-                    src="/clubs/mirano.jpg"
-                    alt="Mirano"
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
+            <Image
+              src="/hero.png"
+              alt="Brussels nightlife"
+              width={600}
+              height={500}
+              className="w-full h-auto"
+              priority
+            />
           </div>
         </div>
       </section>
@@ -217,9 +181,7 @@ export default async function HomePage() {
                   const venue =
                     event.place?.translations?.en?.name || "";
                   const image =
-                    event.media?.poster ||
-                    event.media?.photo?.[0] ||
-                    "";
+                    getEventImage(event);
 
                   return (
                     <div

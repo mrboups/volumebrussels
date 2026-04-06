@@ -1,3 +1,8 @@
+interface MediaItem {
+  type: string;
+  link: string;
+}
+
 interface AgendaEvent {
   id: string;
   date_start: string;
@@ -13,10 +18,15 @@ interface AgendaEvent {
       en?: { name?: string };
     };
   };
-  media?: {
-    poster?: string;
-    photo?: string[];
-  };
+  media?: MediaItem[];
+}
+
+function getEventImage(event: AgendaEvent): string {
+  if (!event.media || !Array.isArray(event.media)) return "";
+  const poster = event.media.find((m) => m.type === "poster");
+  if (poster?.link) return poster.link;
+  const photo = event.media.find((m) => m.type === "photo");
+  return photo?.link || "";
 }
 
 async function getEvents(): Promise<AgendaEvent[]> {
@@ -65,7 +75,7 @@ export default async function AgendaPage() {
                 event.translations?.nl?.name ||
                 "Untitled";
               const venue = event.place?.translations?.en?.name || "";
-              const image = event.media?.poster || event.media?.photo?.[0] || "";
+              const image = getEventImage(event);
 
               return (
                 <div

@@ -13,9 +13,9 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="Volume Pass"
-            width={140}
+            width={100}
             height={40}
             className="h-10 w-auto"
             priority

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 
+// TEST PRICES — change back to 2900/4800 for production
 const PASS_PRICES: Record<string, { amount: number; name: string }> = {
-  night: { amount: 2900, name: "Night Pass — One night of clubbing" },
-  weekend: { amount: 4800, name: "Weekend Pass — 48h Clubbing Weekend" },
+  night: { amount: 50, name: "Night Pass — One night of clubbing" },
+  weekend: { amount: 50, name: "Weekend Pass — 48h Clubbing Weekend" },
 };
 
 export async function POST(req: NextRequest) {
@@ -44,8 +45,9 @@ export async function POST(req: NextRequest) {
       passType,
       ...(resellerId ? { resellerId } : {}),
     },
+    locale: "auto",
     success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/#pricing`,
+    cancel_url: `${appUrl}/buy-ticket`,
   });
 
   return NextResponse.json({ url: session.url });
