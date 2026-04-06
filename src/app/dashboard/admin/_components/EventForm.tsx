@@ -139,7 +139,7 @@ export default function EventForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name (optional, if different from club)</label>
           <input
             name="venueName"
             defaultValue={event?.venueName ?? ""}
@@ -147,7 +147,7 @@ export default function EventForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address (optional)</label>
           <input
             name="venueAddress"
             defaultValue={event?.venueAddress ?? ""}
@@ -168,19 +168,21 @@ export default function EventForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Club (optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Club *</label>
           <select
             name="clubId"
+            required
             defaultValue={event?.clubId ?? ""}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
           >
-            <option value="">No club</option>
+            <option value="" disabled>Select a club</option>
             {clubs.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-400">Venue fields below are optional — use only if event is at a different location than the club.</p>
         </div>
       </div>
 

@@ -7,8 +7,20 @@ import { revalidatePath } from "next/cache";
 function slugify(name: string) {
   return name
     .toLowerCase()
+    .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+async function uniqueEventSlug(base: string): Promise<string> {
+  let slug = base;
+  let counter = 0;
+  while (true) {
+    const existing = await db.event.findUnique({ where: { slug } });
+    if (!existing) return slug;
+    counter++;
+    slug = `${base}-${counter}`;
+  }
 }
 
 function splitTags(value: string): string[] {
@@ -151,7 +163,8 @@ interface PricingPhaseInput {
 
 export async function createEvent(formData: FormData) {
   const name = formData.get("name") as string;
-  const slug = (formData.get("slug") as string) || slugify(name);
+  const baseSlug = (formData.get("slug") as string) || slugify(name);
+  const slug = await uniqueEventSlug(baseSlug);
   const phasesJson = formData.get("pricingPhases") as string;
   const phases: PricingPhaseInput[] = phasesJson ? JSON.parse(phasesJson) : [];
 
