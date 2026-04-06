@@ -12,8 +12,7 @@ export function getResend(): Resend {
   return _resend;
 }
 
-// Use onboarding@resend.dev until volumebrussels.com domain is verified on Resend
-export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "VOLUME Brussels <onboarding@resend.dev>";
+export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Volume Brussels <onboarding@resend.dev>";
 
 interface SendPassEmailParams {
   to: string;
