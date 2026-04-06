@@ -12,6 +12,17 @@ function slugify(name: string) {
     .replace(/^-|-$/g, "");
 }
 
+export async function updateSortOrder(id: string, type: "club" | "museum", order: number) {
+  if (type === "club") {
+    await db.club.update({ where: { id }, data: { sortOrder: order } });
+  } else {
+    await db.museum.update({ where: { id }, data: { sortOrder: order } });
+  }
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/offer");
+  revalidatePath("/");
+}
+
 async function uniqueEventSlug(base: string): Promise<string> {
   let slug = base;
   let counter = 0;

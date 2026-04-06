@@ -1,14 +1,15 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { deleteMuseum } from "../_actions";
+import { deleteMuseum, updateSortOrder } from "../_actions";
 import DeleteButton from "../_components/DeleteButton";
+import InlineOrder from "../_components/InlineOrder";
 
 export const dynamic = "force-dynamic";
 
 const eur = new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" });
 
 export default async function MuseumsPage() {
-  const museums = await db.museum.findMany({ orderBy: { name: "asc" } });
+  const museums = await db.museum.findMany({ orderBy: { sortOrder: "asc" } });
 
   return (
     <div className="space-y-6">
@@ -26,6 +27,7 @@ export default async function MuseumsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-left text-gray-500">
+              <th className="px-3 py-3 font-medium w-16">Order</th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Address</th>
               <th className="px-4 py-3 font-medium">Pay/Visit</th>
@@ -36,6 +38,9 @@ export default async function MuseumsPage() {
           <tbody>
             {museums.map((museum) => (
               <tr key={museum.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="px-3 py-3">
+                  <InlineOrder id={museum.id} type="museum" value={museum.sortOrder} action={updateSortOrder} />
+                </td>
                 <td className="px-4 py-3 font-medium text-gray-900">{museum.name}</td>
                 <td className="px-4 py-3 text-gray-600">{museum.address}</td>
                 <td className="px-4 py-3 text-gray-600">{eur.format(museum.payPerVisit)}</td>
@@ -65,7 +70,7 @@ export default async function MuseumsPage() {
             ))}
             {museums.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   No museums found.
                 </td>
               </tr>
