@@ -14,6 +14,14 @@ export async function verifyPassword(
   return bcrypt.compare(password, hashedPassword);
 }
 
+export function generateToken(payload: {
+  userId: string;
+  email: string;
+  role: string;
+}): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "90d" });
+}
+
 export function generateMagicLinkToken(): string {
   return jwt.sign(
     { type: "magic_link", iat: Math.floor(Date.now() / 1000) },

@@ -19,6 +19,9 @@ export default function Navbar() {
           <Link href="/offer" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
             Offer
           </Link>
+          <Link href="/museums" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
+            Museums
+          </Link>
           <Link href="/agenda" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
             Agenda
           </Link>
@@ -51,6 +54,9 @@ export default function Navbar() {
         <div className="md:hidden border-t border-gray-100 bg-white px-4 pb-4 flex flex-col gap-4">
           <Link href="/offer" className="text-sm font-semibold uppercase tracking-wide pt-4" onClick={() => setMobileOpen(false)}>
             Offer
+          </Link>
+          <Link href="/museums" className="text-sm font-semibold uppercase tracking-wide" onClick={() => setMobileOpen(false)}>
+            Museums
           </Link>
           <Link href="/agenda" className="text-sm font-semibold uppercase tracking-wide" onClick={() => setMobileOpen(false)}>
             Agenda
