@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
         passType,
         ...(resellerId ? { resellerId } : {}),
       },
-      locale: "auto",
+      locale: "en",
+      currency: "eur",
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/buy-ticket`,
     });
