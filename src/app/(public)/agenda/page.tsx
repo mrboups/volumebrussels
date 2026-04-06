@@ -5,6 +5,7 @@ interface MediaItem {
 
 interface AgendaEvent {
   id: string;
+  backoffice_id: number;
   date_start: string;
   is_soldout: boolean;
   is_canceled: boolean;
@@ -76,11 +77,15 @@ export default async function AgendaPage() {
                 "Untitled";
               const venue = event.place?.translations?.en?.name || "";
               const image = getEventImage(event);
+              const visitUrl = `https://www.visit.brussels/en/visitors/agenda/event/${event.backoffice_id}`;
 
               return (
-                <div
+                <a
                   key={event.id}
-                  className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                  href={visitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow block"
                 >
                   {image ? (
                     <div className="relative w-full h-48 bg-gray-200">
@@ -117,7 +122,7 @@ export default async function AgendaPage() {
                       <p className="text-sm text-gray-500 mt-1">{venue}</p>
                     )}
                   </div>
-                </div>
+                </a>
               );
             })}
           </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import PricingCard from "@/components/PricingCard";
 import VideoOverlay from "@/components/VideoOverlay";
+import EmbedSocial from "@/components/EmbedSocial";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -327,15 +328,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl sm:text-4xl font-light">{"What's On"}</h2>
           <div className="mt-8">
-            <div
-              className="embedsocial-hashtag"
-              data-ref="e0647ca3b95dcb0c67a6edb18799370458262528"
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `(function(d, s, id) { var js; if (d.getElementById(id)) {return;} js = d.createElement(s); js.id = id; js.src = "https://embedsocial.com/cdn/ht.js"; d.getElementsByTagName("head")[0].appendChild(js); }(document, "script", "EmbedSocialHashtagScript"));`,
-              }}
-            />
+            <EmbedSocial />
           </div>
         </div>
       </section>
