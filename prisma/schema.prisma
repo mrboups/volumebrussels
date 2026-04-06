@@ -77,9 +77,14 @@ model Club {
   pictures      String[]
   instagramUrl  String?
   facebookUrl   String?
+  websiteUrl    String?
   payPerVisit   Float         @default(10)
   openDays      DayOfWeek[]
   passInclusion PassInclusion @default(both)
+  musicTags     String[]
+  dresscodeTags String[]
+  openTime      String?
+  closeTime     String?
   isActive      Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

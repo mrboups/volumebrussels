@@ -34,8 +34,14 @@ export default async function OfferPage() {
                 name={club.name}
                 description={club.description || ""}
                 imageUrl={club.pictures?.[0]}
+                musicTags={club.musicTags}
+                dresscodeTags={club.dresscodeTags}
+                openDays={club.openDays}
+                openTime={club.openTime || undefined}
+                closeTime={club.closeTime || undefined}
                 instagramUrl={club.instagramUrl || undefined}
                 facebookUrl={club.facebookUrl || undefined}
+                websiteUrl={club.websiteUrl || undefined}
               />
             ))}
           </div>
