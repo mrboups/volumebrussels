@@ -7,6 +7,7 @@ interface SwipeSliderProps {
   label?: string;
   completedLabel?: string;
   disabled?: boolean;
+  initialCompleted?: boolean;
 }
 
 export default function SwipeSlider({
@@ -14,11 +15,12 @@ export default function SwipeSlider({
   label = "Swipe to check in",
   completedLabel = "Checked in",
   disabled = false,
+  initialCompleted = false,
 }: SwipeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [offsetX, setOffsetX] = useState(0);
-  const [completed, setCompleted] = useState(false);
+  const [completed, setCompleted] = useState(initialCompleted);
   const [loading, setLoading] = useState(false);
   const startXRef = useRef(0);
   const trackWidthRef = useRef(0);
