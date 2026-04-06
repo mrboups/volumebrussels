@@ -139,25 +139,6 @@ export default function EventForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name (optional, if different from club)</label>
-          <input
-            name="venueName"
-            defaultValue={event?.venueName ?? ""}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address (optional)</label>
-          <input
-            name="venueAddress"
-            defaultValue={event?.venueAddress ?? ""}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
           <input
             name="date"
@@ -182,7 +163,25 @@ export default function EventForm({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-400">Venue fields below are optional — use only if event is at a different location than the club.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name (optional, if different from club)</label>
+          <input
+            name="venueName"
+            defaultValue={event?.venueName ?? ""}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address (optional)</label>
+          <input
+            name="venueAddress"
+            defaultValue={event?.venueAddress ?? ""}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
+          />
         </div>
       </div>
 

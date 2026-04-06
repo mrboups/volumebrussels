@@ -199,7 +199,7 @@ const museums = [
     description: "Manneken-Pis is the only statue in the world with an actual dressing room!",
     pictures: ["/museums/garderobe-mannekenpis.jpg"],
     websiteUrl: "https://mannekenpis.brussels",
-    payPerVisit: 7,
+    payPerVisit: 6,
     sortOrder: 103,
   },
   {
@@ -209,7 +209,7 @@ const museums = [
     description: "Descend deep into the bowels of the city for this unique experience!",
     pictures: ["/museums/sewer-museum.jpg"],
     websiteUrl: "https://sewermuseum.brussels",
-    payPerVisit: 7,
+    payPerVisit: 6,
     sortOrder: 104,
   },
   {
@@ -219,7 +219,7 @@ const museums = [
     description: "Until the 19th century, this fabric made the Brussels famous across the globe.",
     pictures: ["/museums/fashion-lace-museum.jpg"],
     websiteUrl: "https://fashionandlacemuseum.brussels",
-    payPerVisit: 7,
+    payPerVisit: 6,
     sortOrder: 105,
   },
   {
@@ -229,7 +229,7 @@ const museums = [
     description: "The most important work in our collection is undoubtedly the building that houses the museum.",
     pictures: ["/museums/maison-du-roi.jpg"],
     websiteUrl: "https://brusselscitymuseum.brussels",
-    payPerVisit: 7,
+    payPerVisit: 6,
     sortOrder: 106,
   },
 ];
