@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
 
 interface PricingCardProps {
   title: string;
@@ -6,9 +8,49 @@ interface PricingCardProps {
   subtitle: string;
   features: string[];
   filled?: boolean;
+  passType: "night" | "weekend";
 }
 
-export default function PricingCard({ title, price, subtitle, features, filled = false }: PricingCardProps) {
+export default function PricingCard({
+  title,
+  price,
+  subtitle,
+  features,
+  filled = false,
+  passType,
+}: PricingCardProps) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleBuy() {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      // Check for reseller tracking parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const resellerId = urlParams.get("ref") || undefined;
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passType, resellerId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to start checkout");
+      }
+
+      const { url } = await res.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="border border-gray-200 p-8 flex flex-col items-center text-center w-full max-w-sm">
       <h3 className="text-2xl font-extrabold uppercase tracking-wide">{title}</h3>
@@ -24,16 +66,17 @@ export default function PricingCard({ title, price, subtitle, features, filled =
         ))}
       </ul>
 
-      <Link
-        href="#"
-        className={`mt-8 w-full py-3 text-sm font-semibold uppercase tracking-wide text-center transition-colors ${
+      <button
+        onClick={handleBuy}
+        disabled={loading}
+        className={`mt-8 w-full py-3 text-sm font-semibold uppercase tracking-wide text-center transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
           filled
             ? "bg-black text-white hover:bg-gray-900"
             : "border-2 border-black text-black hover:bg-black hover:text-white"
         }`}
       >
-        Buy Now
-      </Link>
+        {loading ? "Redirecting..." : "Buy Now"}
+      </button>
     </div>
   );
 }

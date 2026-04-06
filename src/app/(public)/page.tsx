@@ -67,6 +67,7 @@ export default function HomePage() {
                 "Free Access to 5 Brussels Museums",
               ]}
               filled={false}
+              passType="night"
             />
             <PricingCard
               title="Weekend Pass"
@@ -78,6 +79,7 @@ export default function HomePage() {
                 "Free Access to 5 Brussels Museums",
               ]}
               filled={true}
+              passType="weekend"
             />
           </div>
         </div>
