@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import PricingCard from "@/components/PricingCard";
+import VideoOverlay from "@/components/VideoOverlay";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -129,20 +130,7 @@ export default async function HomePage() {
               >
                 Buy Now
               </Link>
-              <Link
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
-              >
-                {/* Play icon */}
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                See how it works
-              </Link>
+              <VideoOverlay />
             </div>
           </div>
 
@@ -248,7 +236,7 @@ export default async function HomePage() {
       {/* ═══ 3. A Whole City Experience ═══ */}
       <section className="py-16 lg:py-20 bg-[#1a7fc7] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center">
+          <h2 className="text-3xl sm:text-4xl font-normal text-center">
             A Whole City Experience
           </h2>
 
@@ -268,7 +256,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold">9 Clubs</h3>
+                <h3 className="text-lg font-semibold">9 Clubs</h3>
                 <p className="mt-1 text-gray-500 text-sm leading-relaxed">
                   Dance the night away in 9 clubs: electro, techno, afro, latino.
                 </p>
@@ -290,7 +278,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold">
+                <h3 className="text-lg font-semibold">
                   Atomium &amp; Brussels Design Museum
                 </h3>
                 <p className="mt-1 text-gray-500 text-sm leading-relaxed">
@@ -314,7 +302,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold">5 Brussels Museums</h3>
+                <h3 className="text-lg font-semibold">5 Brussels Museums</h3>
                 <p className="mt-1 text-gray-500 text-sm leading-relaxed">
                   Discover 5 museums showcasing the city&apos;s rich history and
                   contemporary art scene.
@@ -337,7 +325,7 @@ export default async function HomePage() {
       {/* ═══ 4. What's On — EmbedSocial Instagram ═══ */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold">{"What's On"}</h2>
+          <h2 className="text-3xl sm:text-4xl font-light">{"What's On"}</h2>
           <div className="mt-8">
             <div
               className="embedsocial-hashtag"
