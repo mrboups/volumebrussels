@@ -1,13 +1,18 @@
 import OfferCard from "@/components/OfferCard";
 import { db } from "@/lib/db";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function OfferPage() {
-  const clubs = await db.club.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
+  let clubs: Awaited<ReturnType<typeof db.club.findMany>> = [];
+  try {
+    clubs = await db.club.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    });
+  } catch {
+    // DB not reachable during build
+  }
 
   return (
     <section className="py-20 lg:py-28 bg-gray-50">
