@@ -41,6 +41,7 @@ export default function ClubForm({
   const [name, setName] = useState(club?.name ?? "");
   const [slug, setSlug] = useState(club?.slug ?? "");
   const [autoSlug, setAutoSlug] = useState(!club);
+  const [openDays, setOpenDays] = useState<string[]>(club?.openDays ?? []);
 
   useEffect(() => {
     if (autoSlug) setSlug(slugify(name));
@@ -122,29 +123,18 @@ export default function ClubForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Open Days</label>
-        <input
-          type="hidden"
-          name="openDays"
-          value={DAYS.filter((d) => {
-            const el = document.querySelector<HTMLInputElement>(`input[data-day="${d}"]`);
-            return el?.checked;
-          }).join(",")}
-        />
+        <input type="hidden" name="openDays" value={openDays.join(",")} />
         <div className="flex gap-4">
           {DAYS.map((d) => (
             <label key={d} className="flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
-                data-day={d}
-                defaultChecked={club?.openDays.includes(d)}
-                onChange={() => {
-                  // Update hidden input
-                  const hidden = document.querySelector<HTMLInputElement>('input[name="openDays"]');
-                  if (hidden) {
-                    hidden.value = DAYS.filter((day) => {
-                      const el = document.querySelector<HTMLInputElement>(`input[data-day="${day}"]`);
-                      return el?.checked;
-                    }).join(",");
+                checked={openDays.includes(d)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setOpenDays((prev) => [...prev, d]);
+                  } else {
+                    setOpenDays((prev) => prev.filter((day) => day !== d));
                   }
                 }}
                 className="rounded border-gray-300"

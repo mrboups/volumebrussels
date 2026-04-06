@@ -243,3 +243,55 @@ export async function deleteEvent(id: string) {
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/events");
 }
+
+// --------------- PASS EMAIL ---------------
+
+export async function resendPassEmail(passId: string) {
+  const pass = await db.pass.findUnique({
+    where: { id: passId },
+    include: { user: true },
+  });
+  if (!pass) return { error: "Pass not found" };
+
+  try {
+    const { sendPassEmail } = await import("@/lib/email");
+    await sendPassEmail({
+      to: pass.user.email,
+      passId: pass.id,
+      passType: pass.type as "night" | "weekend",
+      customerName: pass.user.name || undefined,
+    });
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send" };
+  }
+}
+
+export async function updatePassEmail(passId: string, newEmail: string) {
+  const pass = await db.pass.findUnique({
+    where: { id: passId },
+    include: { user: true },
+  });
+  if (!pass) return { error: "Pass not found" };
+
+  // Update user email
+  await db.user.update({
+    where: { id: pass.userId },
+    data: { email: newEmail },
+  });
+
+  // Resend email to new address
+  try {
+    const { sendPassEmail } = await import("@/lib/email");
+    await sendPassEmail({
+      to: newEmail,
+      passId: pass.id,
+      passType: pass.type as "night" | "weekend",
+      customerName: pass.user.name || undefined,
+    });
+    revalidatePath("/dashboard/admin");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send" };
+  }
+}

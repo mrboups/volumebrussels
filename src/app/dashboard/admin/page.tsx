@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
+import PassActions from "./_components/PassActions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,7 @@ export default async function AdminDashboardPage() {
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium">Scans</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -136,11 +138,14 @@ export default async function AdminDashboardPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{pass.user.email}</td>
                   <td className="px-4 py-3 text-gray-600">{pass._count.scans}</td>
+                  <td className="px-4 py-3">
+                    <PassActions passId={pass.id} currentEmail={pass.user.email} />
+                  </td>
                 </tr>
               ))}
               {recentPasses.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                     No passes found.
                   </td>
                 </tr>

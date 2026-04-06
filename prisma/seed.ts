@@ -23,6 +23,7 @@ const clubs = [
     dresscodeTags: ["FASHION", "21+"],
     openTime: "18",
     closeTime: "8",
+    sortOrder: 11,
   },
   {
     name: "Spirito",
@@ -40,6 +41,7 @@ const clubs = [
     dresscodeTags: ["CASUAL", "CHIC"],
     openTime: "20",
     closeTime: "8",
+    sortOrder: 12,
   },
   {
     name: "Mirano",
@@ -57,6 +59,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE"],
     openTime: "20",
     closeTime: "8",
+    sortOrder: 13,
   },
   {
     name: "Fuse",
@@ -74,6 +77,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE"],
     openTime: "18",
     closeTime: "8",
+    sortOrder: 14,
   },
   {
     name: "C12",
@@ -91,6 +95,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE", "21+"],
     openTime: "18",
     closeTime: "8",
+    sortOrder: 15,
   },
   {
     name: "Madame Moustache",
@@ -108,6 +113,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE"],
     openTime: "14",
     closeTime: "8",
+    sortOrder: 17,
   },
   {
     name: "Chez Ginette",
@@ -125,6 +131,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE"],
     openTime: "18",
     closeTime: "8",
+    sortOrder: 18,
   },
   {
     name: "UMI",
@@ -142,6 +149,7 @@ const clubs = [
     dresscodeTags: ["NO DRESSCODE"],
     openTime: "14",
     closeTime: "8",
+    sortOrder: 19,
   },
   {
     name: "Jalousy",
@@ -159,6 +167,7 @@ const clubs = [
     dresscodeTags: ["CASUAL", "21+"],
     openTime: "20",
     closeTime: "8",
+    sortOrder: 21,
   },
 ];
 
@@ -171,6 +180,7 @@ const museums = [
     pictures: ["/museums/atomium.jpg"],
     websiteUrl: "https://atomium.be",
     payPerVisit: 8,
+    sortOrder: 100,
   },
   {
     name: "Design Museum Brussels",
@@ -180,6 +190,7 @@ const museums = [
     pictures: ["/museums/design-museum.jpg"],
     websiteUrl: "https://designmuseum.brussels",
     payPerVisit: 0,
+    sortOrder: 101,
   },
   {
     name: "GardeRobe MannekenPis",
@@ -189,6 +200,7 @@ const museums = [
     pictures: ["/museums/garderobe-mannekenpis.jpg"],
     websiteUrl: "https://mannekenpis.brussels",
     payPerVisit: 5,
+    sortOrder: 103,
   },
   {
     name: "Sewer Museum",
@@ -198,6 +210,7 @@ const museums = [
     pictures: ["/museums/sewer-museum.jpg"],
     websiteUrl: "https://sewermuseum.brussels",
     payPerVisit: 5,
+    sortOrder: 104,
   },
   {
     name: "Fashion & Lace Museum",
@@ -207,6 +220,7 @@ const museums = [
     pictures: ["/museums/fashion-lace-museum.jpg"],
     websiteUrl: "https://fashionandlacemuseum.brussels",
     payPerVisit: 5,
+    sortOrder: 105,
   },
   {
     name: "La Maison du Roi",
@@ -216,6 +230,7 @@ const museums = [
     pictures: ["/museums/maison-du-roi.jpg"],
     websiteUrl: "https://brusselscitymuseum.brussels",
     payPerVisit: 5,
+    sortOrder: 106,
   },
 ];
 

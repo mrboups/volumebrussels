@@ -9,11 +9,11 @@ export default async function OfferPage() {
   try {
     clubs = await db.club.findMany({
       where: { isActive: true },
-      orderBy: { name: "asc" },
+      orderBy: { sortOrder: "asc" },
     });
     museums = await db.museum.findMany({
       where: { isActive: true },
-      orderBy: { name: "asc" },
+      orderBy: { sortOrder: "asc" },
     });
   } catch {
     // DB not reachable during build
