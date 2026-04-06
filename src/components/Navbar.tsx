@@ -30,7 +30,7 @@ export default function Navbar() {
         {/* CTA button */}
         <div className="hidden md:block">
           <Link
-            href="#pricing"
+            href="/buy-ticket"
             className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 hover:bg-gray-900 transition-colors"
           >
             Buy Ticket
@@ -62,7 +62,7 @@ export default function Navbar() {
             Agenda
           </Link>
           <Link
-            href="#pricing"
+            href="/buy-ticket"
             className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 text-center"
             onClick={() => setMobileOpen(false)}
           >

@@ -52,10 +52,10 @@ export default function PricingCard({
   }
 
   return (
-    <div className="border border-gray-200 p-8 flex flex-col items-center text-center w-full max-w-sm">
-      <h3 className="text-2xl font-extrabold uppercase tracking-wide">{title}</h3>
-      <p className="text-4xl font-extrabold mt-4">{price}</p>
+    <div className="bg-white border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center w-full max-w-sm shadow-sm">
+      <h3 className="text-2xl font-extrabold">{title}</h3>
       <p className="text-gray-500 mt-2 text-sm">{subtitle}</p>
+      <p className="text-5xl font-extrabold mt-6">{price}</p>
 
       <ul className="mt-8 space-y-3 w-full text-left">
         {features.map((feature) => (
@@ -69,7 +69,7 @@ export default function PricingCard({
       <button
         onClick={handleBuy}
         disabled={loading}
-        className={`mt-8 w-full py-3 text-sm font-semibold uppercase tracking-wide text-center transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
+        className={`mt-8 w-full py-3.5 text-sm font-semibold tracking-wide text-center transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait rounded-full ${
           filled
             ? "bg-black text-white hover:bg-gray-900"
             : "border-2 border-black text-black hover:bg-black hover:text-white"
