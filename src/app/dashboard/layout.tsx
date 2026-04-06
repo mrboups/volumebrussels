@@ -10,6 +10,12 @@ const navItems = [
   { href: "/dashboard/reseller", label: "Reseller" },
 ];
 
+const adminSubItems = [
+  { href: "/dashboard/admin/clubs", label: "Clubs" },
+  { href: "/dashboard/admin/museums", label: "Museums" },
+  { href: "/dashboard/admin/events", label: "Events" },
+];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -29,18 +35,40 @@ export default function DashboardLayout({
           <nav className="p-4 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
+              const isSection = pathname.startsWith(item.href);
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-black text-white"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-black"
-                  }`}
-                >
-                  {item.label}
-                </Link>
+                <div key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-black text-white"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-black"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                  {item.href === "/dashboard/admin" && isSection && (
+                    <div className="ml-3 mt-1 space-y-0.5">
+                      {adminSubItems.map((sub) => {
+                        const subActive = pathname.startsWith(sub.href);
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                              subActive
+                                ? "bg-gray-200 text-black"
+                                : "text-gray-500 hover:bg-gray-100 hover:text-black"
+                            }`}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -8,19 +9,15 @@ function truncateId(id: string) {
   return id.slice(0, 8) + "...";
 }
 
-function dayBadge(day: string) {
-  const labels: Record<string, string> = { friday: "Fri", saturday: "Sat", sunday: "Sun" };
-  return labels[day] ?? day;
-}
-
 export default async function AdminDashboardPage() {
   const [
     totalPasses,
     revenueAgg,
     activePasses,
     totalScans,
-    clubs,
-    museums,
+    clubCount,
+    museumCount,
+    eventCount,
     recentPasses,
     recentScans,
   ] = await Promise.all([
@@ -28,8 +25,9 @@ export default async function AdminDashboardPage() {
     db.pass.aggregate({ _sum: { price: true } }),
     db.pass.count({ where: { status: "active" } }),
     db.passScan.count(),
-    db.club.findMany({ orderBy: { name: "asc" } }),
-    db.museum.findMany({ orderBy: { name: "asc" } }),
+    db.club.count(),
+    db.museum.count(),
+    db.event.count(),
     db.pass.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -54,6 +52,12 @@ export default async function AdminDashboardPage() {
     { label: "Total Check-ins", value: totalScans.toLocaleString() },
   ];
 
+  const quickLinks = [
+    { href: "/dashboard/admin/clubs", label: "Manage Clubs", count: clubCount },
+    { href: "/dashboard/admin/museums", label: "Manage Museums", count: museumCount },
+    { href: "/dashboard/admin/events", label: "Manage Events", count: eventCount },
+  ];
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -68,104 +72,23 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* Clubs Management */}
+      {/* Quick Links */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Clubs Management</h2>
-        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-gray-500">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Address</th>
-                <th className="px-4 py-3 font-medium">Open Days</th>
-                <th className="px-4 py-3 font-medium">Pay/Visit</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clubs.map((club) => (
-                <tr key={club.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{club.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{club.address}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {club.openDays.map((d) => (
-                        <span
-                          key={d}
-                          className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded"
-                        >
-                          {dayBadge(d)}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{eur.format(club.payPerVisit)}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
-                        club.isActive
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-700"
-                      }`}
-                    >
-                      {club.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {clubs.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                    No clubs found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Museums Management */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Museums Management</h2>
-        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-gray-500">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Address</th>
-                <th className="px-4 py-3 font-medium">Pay/Visit</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {museums.map((museum) => (
-                <tr key={museum.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{museum.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{museum.address}</td>
-                  <td className="px-4 py-3 text-gray-600">{eur.format(museum.payPerVisit)}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
-                        museum.isActive
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-700"
-                      }`}
-                    >
-                      {museum.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {museums.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
-                    No museums found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Links</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {quickLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="bg-white rounded-lg border border-gray-200 p-5 hover:border-black transition-colors group"
+            >
+              <p className="text-sm font-semibold text-gray-900 group-hover:text-black">
+                {link.label}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{link.count}</p>
+              <p className="text-xs text-gray-400 mt-1">Click to manage &rarr;</p>
+            </Link>
+          ))}
         </div>
       </section>
 
