@@ -34,11 +34,13 @@ export default async function TicketPage({
       date: ticket.event.date.toISOString(),
       createdAt: ticket.event.createdAt.toISOString(),
       updatedAt: ticket.event.updatedAt.toISOString(),
-      club: {
-        ...ticket.event.club,
-        createdAt: ticket.event.club.createdAt.toISOString(),
-        updatedAt: ticket.event.club.updatedAt.toISOString(),
-      },
+      club: ticket.event.club
+        ? {
+            ...ticket.event.club,
+            createdAt: ticket.event.club.createdAt.toISOString(),
+            updatedAt: ticket.event.club.updatedAt.toISOString(),
+          }
+        : null,
     },
   };
 

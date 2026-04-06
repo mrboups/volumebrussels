@@ -153,15 +153,19 @@ model PassScan {
 model Event {
   id             String   @id @default(cuid())
   name           String
+  slug           String   @unique
   description    String?  @db.Text
   coverImage     String?
-  clubId         String
+  clubId         String?
+  venueName      String?
+  venueAddress   String?
   date           DateTime
   isLinkedToPass Boolean  @default(false)
+  isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  club          Club           @relation(fields: [clubId], references: [id])
+  club          Club?          @relation(fields: [clubId], references: [id])
   tickets       Ticket[]
   pricingPhases PricingPhase[]
 

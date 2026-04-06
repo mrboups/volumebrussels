@@ -19,7 +19,7 @@ interface Event {
   description: string | null;
   coverImage: string | null;
   date: string;
-  club: Club;
+  club: Club | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,7 +103,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
   }, [ticket.id]);
 
   const coverImage =
-    ticket.event.coverImage || getClubImage(ticket.event.club.slug);
+    ticket.event.coverImage || (ticket.event.club ? getClubImage(ticket.event.club.slug) : "/clubs/default.jpg");
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -154,10 +154,10 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
           </p>
           <div className="mt-3">
             <p className="text-white text-sm font-semibold">
-              {ticket.event.club.name}
+              {ticket.event.club?.name || "Venue TBA"}
             </p>
             <p className="text-neutral-500 text-xs mt-0.5">
-              {ticket.event.club.address}
+              {ticket.event.club?.address || ""}
             </p>
           </div>
         </div>

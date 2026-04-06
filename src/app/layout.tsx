@@ -9,8 +9,23 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "VOLUME Brussels",
-  description: "Brussels nightlife, one pass. Clubs, museums, events.",
+  title: "Volume Brussels | One night access pass to all major clubs and parties every friday or saturday",
+  description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+  icons: {
+    icon: "/favicon.png",
+  },
+  openGraph: {
+    title: "Volume Brussels | Nightlife Pass",
+    description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+    url: "https://www.volumebrussels.com/",
+    siteName: "Volume Tickets",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Volume Brussels | Nightlife Pass",
+    description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+  },
 };
 
 export default function RootLayout({

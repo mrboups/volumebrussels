@@ -244,6 +244,64 @@ async function main() {
   }
 
   console.log(`\nSeeded ${clubs.length} clubs + ${museums.length} museums`);
+
+  // --- Events ---
+  const eventData = [
+    { name: "Gasolina Social Club", slug: "gasolina", venueName: "Various Venues", venueAddress: "Brussels", description: "Reggaeton Party & Salsa Class", date: "2026-04-11" },
+    { name: "Ma Jolie", slug: "majolie", venueName: "Brussels", venueAddress: "Brussels", description: "Ma Jolie party night", date: "2026-04-18" },
+    { name: "Space x Mirano", slug: "space", venueName: "Mirano Brussels", venueAddress: "Ch. de Louvain 38, Brussels", description: "Space party at Mirano", date: "2026-04-11" },
+    { name: "Hangar Festival", slug: "hangarfestival", venueName: "Hangar", venueAddress: "Brussels", description: "Hangar Festival Brussels", date: "2026-05-01" },
+    { name: "Coco Club", slug: "cococlub", venueName: "Brussels", venueAddress: "Brussels", description: "Coco Club night", date: "2026-04-18" },
+    { name: "AfroBase", slug: "afrobase", venueName: "Mirano Brussels", venueAddress: "Ch. de Louvain 38, Brussels", description: "AfroBase x Mirano", date: "2026-04-12" },
+    { name: "Oscar Mulero", slug: "oscarmulero", venueName: "Fuse", venueAddress: "Rue Blaes 208, Brussels", description: "Oscar Mulero at Fuse", date: "2026-04-19" },
+    { name: "Madame X", slug: "madamex", venueName: "Madame Moustache", venueAddress: "Quai au Bois à Brûler 5/7, Brussels", description: "Madame X party", date: "2026-04-11" },
+    { name: "21AM", slug: "21am", venueName: "Brussels", venueAddress: "Brussels", description: "21AM event", date: "2026-04-25" },
+    { name: "On Sunday", slug: "onsunday", venueName: "Brussels", venueAddress: "Brussels", description: "On Sunday party", date: "2026-04-13" },
+    { name: "UMI Night", slug: "umi-night", venueName: "UMI", venueAddress: "Rue du Marché aux Fromages 10, Brussels", description: "UMI club night", date: "2026-04-12" },
+  ];
+
+  const now = new Date();
+  for (const ev of eventData) {
+    const eventDate = new Date(ev.date + "T23:00:00Z");
+    const event = await prisma.event.create({
+      data: {
+        name: ev.name,
+        slug: ev.slug,
+        venueName: ev.venueName,
+        venueAddress: ev.venueAddress,
+        description: ev.description,
+        date: eventDate,
+        isActive: true,
+      },
+    });
+    await prisma.pricingPhase.create({
+      data: {
+        eventId: event.id,
+        name: "regular",
+        price: 15,
+        startDate: now,
+        endDate: eventDate,
+      },
+    });
+    console.log(`  Event: ${ev.name}`);
+  }
+
+  console.log(`Seeded ${eventData.length} events`);
+
+  // --- Admin user ---
+  const bcrypt = require("bcryptjs");
+  const hashedPassword = await bcrypt.hash("volume2026", 12);
+  await prisma.user.upsert({
+    where: { email: "volumebrussels@gmail.com" },
+    update: { name: "Volume Admin", role: "admin", password: hashedPassword },
+    create: {
+      email: "volumebrussels@gmail.com",
+      name: "Volume Admin",
+      role: "admin",
+      password: hashedPassword,
+    },
+  });
+  console.log("  Admin user: volumebrussels@gmail.com");
 }
 
 main()
