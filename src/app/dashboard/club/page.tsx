@@ -8,19 +8,39 @@ function truncateId(id: string) {
   return id.slice(0, 8) + "...";
 }
 
-export default async function ClubDashboardPage() {
+export default async function ClubDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const { token } = await searchParams;
+
+  // If magic link token, filter to that club only
+  let clubFilter: { id?: string } = {};
+  if (token) {
+    const account = await db.clubAccount.findFirst({
+      where: { magicLinkToken: token },
+    });
+    if (account) {
+      clubFilter = { id: account.clubId };
+    }
+  }
+
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const clubWhere = clubFilter.id ? { id: clubFilter.id } : {};
+  const scanClubFilter = clubFilter.id ? { clubId: clubFilter.id } : { clubId: { not: null as string | null } };
+
   const [clubs, visitsThisMonth, visitsAllTime, recentScans] = await Promise.all([
-    db.club.findMany({ orderBy: { name: "asc" } }),
+    db.club.findMany({ where: clubWhere, orderBy: { name: "asc" } }),
     db.passScan.count({
-      where: { clubId: { not: null }, scannedAt: { gte: startOfMonth } },
+      where: { ...scanClubFilter, scannedAt: { gte: startOfMonth } },
     }),
-    db.passScan.count({ where: { clubId: { not: null } } }),
+    db.passScan.count({ where: scanClubFilter }),
     db.passScan.findMany({
       take: 50,
-      where: { clubId: { not: null } },
+      where: scanClubFilter,
       orderBy: { scannedAt: "desc" },
       include: {
         club: { select: { name: true } },
@@ -32,13 +52,13 @@ export default async function ClubDashboardPage() {
   // Revenue by club: we need scans-per-club this month
   const clubScanCounts = await db.passScan.groupBy({
     by: ["clubId"],
-    where: { clubId: { not: null } },
+    where: scanClubFilter,
     _count: { id: true },
   });
 
   const clubScanCountsThisMonth = await db.passScan.groupBy({
     by: ["clubId"],
-    where: { clubId: { not: null }, scannedAt: { gte: startOfMonth } },
+    where: { ...scanClubFilter, scannedAt: { gte: startOfMonth } },
     _count: { id: true },
   });
 

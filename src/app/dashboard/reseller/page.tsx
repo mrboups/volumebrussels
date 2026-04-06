@@ -4,9 +4,28 @@ export const dynamic = "force-dynamic";
 
 const eur = new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" });
 
-export default async function ResellerDashboardPage() {
+export default async function ResellerDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const { token } = await searchParams;
+
+  // If magic link token, filter to that reseller only
+  let resellerFilter: { resellerId?: string } = {};
+  if (token) {
+    const reseller = await db.reseller.findFirst({
+      where: { magicLinkToken: token, isActive: true },
+    });
+    if (reseller) {
+      resellerFilter = { resellerId: reseller.id };
+    }
+  }
+
   const resellerPasses = await db.pass.findMany({
-    where: { resellerId: { not: null } },
+    where: resellerFilter.resellerId
+      ? { resellerId: resellerFilter.resellerId }
+      : { resellerId: { not: null } },
     orderBy: { createdAt: "desc" },
     include: {
       user: { select: { email: true } },
