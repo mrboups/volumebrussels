@@ -67,7 +67,13 @@ export default function Footer() {
           </div>
 
           {/* Separator + Contact */}
-          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end gap-6">
+            <Link href="/terms" className="text-sm text-gray-500 hover:text-black transition-colors">
+              Terms & Conditions
+            </Link>
+            <Link href="/privacy" className="text-sm text-gray-500 hover:text-black transition-colors">
+              Privacy Policy
+            </Link>
             <Link href="mailto:volumebrussels@gmail.com" className="text-sm text-gray-500 hover:text-black transition-colors">
               Contact us
             </Link>

@@ -60,26 +60,34 @@ export default async function CheckoutSuccessPage({
           </svg>
         </div>
 
-        <h1 className="mt-6 text-3xl font-extrabold">Payment Confirmed!</h1>
+        <h1 className="mt-6 text-2xl font-bold">Thank you for your purchase.</h1>
 
-        <p className="mt-4 text-gray-500 leading-relaxed">
-          {passType
-            ? `Your ${passLabel} has been confirmed. Check your email for the pass link.`
-            : "Your payment has been confirmed. Check your email for details."}
+        <div className="mt-6 text-gray-600 leading-relaxed text-sm space-y-4">
+          <p>
+            Your Party Pass link will be sent to you by email shortly.<br />
+            Please allow up to 1 hour for the email to arrive.
+          </p>
+          <p className="text-gray-400">
+            Le lien vers votre Party Pass vous sera envoyé prochainement par e-mail.<br />
+            Veuillez noter que l&apos;e-mail peut prendre 1 heure avant d&apos;arriver.
+          </p>
+          <p className="text-gray-400">
+            De link naar uw Party Pass wordt binnenkort per e-mail naar u verzonden.<br />
+            Houd rekening met een levertijd van maximaal 1 uur voor de e-mail.
+          </p>
+        </div>
+
+        <p className="mt-6 text-sm font-semibold text-gray-900">
+          If you have any questions, our 24/7 support chat is here to help.
         </p>
 
-        {passId ? (
+        {passId && (
           <Link
             href={`/pass/${passId}`}
-            className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 hover:bg-gray-900 transition-colors"
+            className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
           >
             View Your Pass
           </Link>
-        ) : (
-          <p className="mt-8 text-sm text-gray-400">
-            Your pass is being created. You will receive an email shortly with
-            your pass link.
-          </p>
         )}
 
         <Link
