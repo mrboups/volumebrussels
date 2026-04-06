@@ -1,17 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="w-full bg-white border-b border-gray-100">
+    <nav className="w-full bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
         {/* Logo */}
-        <Link href="/" className="text-xl font-extrabold tracking-widest uppercase">
-          VOLUME PASS
+        <Link href="/">
+          <Image
+            src="/logo.png"
+            alt="Volume Pass"
+            width={140}
+            height={40}
+            className="h-10 w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop links */}
@@ -19,19 +27,12 @@ export default function Navbar() {
           <Link href="/offer" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
             Offer
           </Link>
-          <Link href="/museums" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
-            Museums
-          </Link>
           <Link href="/agenda" className="text-sm font-semibold uppercase tracking-wide hover:opacity-70 transition-opacity">
             Agenda
           </Link>
-        </div>
-
-        {/* CTA button */}
-        <div className="hidden md:block">
           <Link
             href="/buy-ticket"
-            className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 hover:bg-gray-900 transition-colors"
+            className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 rounded-full hover:bg-gray-900 transition-colors"
           >
             Buy Ticket
           </Link>
@@ -55,15 +56,12 @@ export default function Navbar() {
           <Link href="/offer" className="text-sm font-semibold uppercase tracking-wide pt-4" onClick={() => setMobileOpen(false)}>
             Offer
           </Link>
-          <Link href="/museums" className="text-sm font-semibold uppercase tracking-wide" onClick={() => setMobileOpen(false)}>
-            Museums
-          </Link>
           <Link href="/agenda" className="text-sm font-semibold uppercase tracking-wide" onClick={() => setMobileOpen(false)}>
             Agenda
           </Link>
           <Link
             href="/buy-ticket"
-            className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 text-center"
+            className="bg-black text-white text-sm font-semibold uppercase tracking-wide px-6 py-2.5 rounded-full text-center"
             onClick={() => setMobileOpen(false)}
           >
             Buy Ticket

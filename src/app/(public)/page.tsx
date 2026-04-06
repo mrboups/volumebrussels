@@ -1,9 +1,62 @@
 import Link from "next/link";
+import Image from "next/image";
 import PricingCard from "@/components/PricingCard";
-import OfferCard from "@/components/OfferCard";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+/* ── Agenda types & helpers ── */
+
+interface AgendaEvent {
+  id: string;
+  date_start: string;
+  is_soldout: boolean;
+  is_canceled: boolean;
+  translations: {
+    en?: { name?: string };
+    fr?: { name?: string };
+    nl?: { name?: string };
+  };
+  place?: {
+    translations?: {
+      en?: { name?: string };
+    };
+  };
+  media?: {
+    poster?: string;
+    photo?: string[];
+  };
+}
+
+async function getEvents(): Promise<AgendaEvent[]> {
+  try {
+    const res = await fetch(
+      "https://api.agenda.be/event/search?volume_brussels=1&size=10",
+      { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || [])
+      .filter((e: AgendaEvent) => e.date_start)
+      .sort((a: AgendaEvent, b: AgendaEvent) =>
+        a.date_start.localeCompare(b.date_start)
+      );
+  } catch {
+    return [];
+  }
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/* ── Bullet points ── */
 
 const bulletPoints = [
   "Skip line exclusive access",
@@ -11,6 +64,8 @@ const bulletPoints = [
   "Use or refund at anytime",
   "7/7 Live Support Chat",
 ];
+
+/* ── Page ── */
 
 export default async function HomePage() {
   let clubs: Awaited<ReturnType<typeof db.club.findMany>> = [];
@@ -29,35 +84,59 @@ export default async function HomePage() {
     // DB not reachable during build
   }
 
+  const events = await getEvents();
+
   return (
     <>
-      {/* Hero Section — matches original Softr site */}
+      {/* ═══ 1. Hero Section ═══ */}
       <section className="bg-[#1a7fc7] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 flex flex-col lg:flex-row items-center gap-12">
+          {/* Left copy */}
           <div className="flex-1 max-w-xl">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light leading-tight">
               Brussels Nightlife in One Pass
             </h1>
             <p className="mt-6 text-lg leading-relaxed opacity-90">
-              Enjoy 24h or 48h access to 9 nightclubs, the iconic Atomium, Brussels Design Museum, and 5 more museums.
+              Enjoy 24&nbsp;h or 48&nbsp;h access to 9 nightclubs, the iconic
+              Atomium, Brussels Design Museum, and 5 more museums.
             </p>
             <ul className="mt-6 space-y-2">
               {bulletPoints.map((point) => (
-                <li key={point} className="flex items-center gap-3 text-sm font-medium">
+                <li
+                  key={point}
+                  className="flex items-center gap-3 text-sm font-medium"
+                >
                   <span className="text-white/80">&#8226;</span>
                   {point}
                 </li>
               ))}
             </ul>
-            <Link
-              href="/buy-ticket"
-              className="inline-block mt-8 bg-white text-[#1a7fc7] font-bold uppercase tracking-wide text-sm px-8 py-3.5 hover:bg-gray-100 transition-colors"
-            >
-              Buy Now
-            </Link>
+
+            <div className="mt-8 flex items-center gap-6">
+              <Link
+                href="/buy-ticket"
+                className="inline-block bg-white text-[#1a7fc7] font-bold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                Buy Now
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
+              >
+                {/* Play icon */}
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                See how it works
+              </Link>
+            </div>
           </div>
 
-          {/* Hero image — collage of club photos */}
+          {/* Right — hero image collage */}
           <div className="flex-1 w-full max-w-md lg:max-w-lg">
             {clubs.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
@@ -74,92 +153,209 @@ export default async function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="aspect-[4/3] bg-white/10 rounded-lg" />
+              <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
+                <div className="aspect-square">
+                  <Image
+                    src="/clubs/fuse.jpg"
+                    alt="Fuse"
+                    width={400}
+                    height={400}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="aspect-square">
+                  <Image
+                    src="/clubs/c12.jpg"
+                    alt="C12"
+                    width={400}
+                    height={400}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="aspect-square">
+                  <Image
+                    src="/clubs/spirito.jpg"
+                    alt="Spirito"
+                    width={400}
+                    height={400}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="aspect-square">
+                  <Image
+                    src="/clubs/mirano.jpg"
+                    alt="Mirano"
+                    width={400}
+                    height={400}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* Offers list — same as /offer page on original site */}
+      {/* ═══ 2. Agenda Section ═══ */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl sm:text-4xl font-extrabold">With your Volume Pass</h2>
-            <p className="mt-3 text-gray-500 text-lg font-medium">
-              Offers included to enjoy an unforgettable weekend in Brussels!
-            </p>
-          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold">Agenda</h2>
 
-          {clubs.length > 0 && (
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {clubs.map((club) => (
-                <OfferCard
-                  key={club.id}
-                  name={club.name}
-                  description={club.description || ""}
-                  imageUrl={club.pictures?.[0]}
-                  musicTags={club.musicTags}
-                  dresscodeTags={club.dresscodeTags}
-                  openDays={club.openDays}
-                  openTime={club.openTime || undefined}
-                  closeTime={club.closeTime || undefined}
-                  instagramUrl={club.instagramUrl || undefined}
-                  facebookUrl={club.facebookUrl || undefined}
-                  websiteUrl={club.websiteUrl || undefined}
-                />
-              ))}
-            </div>
+          {events.length === 0 ? (
+            <p className="mt-12 text-center text-gray-400">
+              No events found, try adjusting your search and filters.
+            </p>
+          ) : (
+            <>
+              <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {events.slice(0, 6).map((event) => {
+                  const name =
+                    event.translations?.en?.name ||
+                    event.translations?.fr?.name ||
+                    event.translations?.nl?.name ||
+                    "Untitled";
+                  const venue =
+                    event.place?.translations?.en?.name || "";
+                  const image =
+                    event.media?.poster ||
+                    event.media?.photo?.[0] ||
+                    "";
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      {image ? (
+                        <div className="relative w-full h-48 bg-gray-200">
+                          <img
+                            src={image}
+                            alt={name}
+                            className="w-full h-full object-cover"
+                          />
+                          {event.is_soldout && (
+                            <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold uppercase px-3 py-1 tracking-wide">
+                              Sold Out
+                            </span>
+                          )}
+                          {event.is_canceled && (
+                            <span className="absolute top-3 right-3 bg-gray-800 text-white text-xs font-bold uppercase px-3 py-1 tracking-wide">
+                              Canceled
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="relative w-full h-48 bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-400 text-sm uppercase tracking-wide">
+                            No Image
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="p-5">
+                        <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
+                          {formatDate(event.date_start)}
+                        </p>
+                        <h3 className="text-lg font-extrabold mt-1">
+                          {name}
+                        </h3>
+                        {venue && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {venue}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-10 text-center">
+                <Link
+                  href="/agenda"
+                  className="inline-block border-2 border-black text-black text-sm font-semibold uppercase tracking-wide px-8 py-3 rounded-full hover:bg-black hover:text-white transition-colors"
+                >
+                  View more
+                </Link>
+              </div>
+            </>
           )}
         </div>
       </section>
 
-      {/* Museums section */}
-      {museums.length > 0 && (
-        <section className="py-16 lg:py-20 bg-white border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl font-extrabold">Brussels City Museum Vouchers</h2>
-              <p className="mt-3 text-gray-500 text-lg font-medium">
-                Brussels City Museums accessible with Volume Pass.
-              </p>
+      {/* ═══ 3. A Whole City Experience ═══ */}
+      <section className="py-16 lg:py-20 bg-[#1a7fc7] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-center">
+            A Whole City Experience
+          </h2>
+
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Card 1 — Clubs */}
+            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
+              <div className="w-full h-56">
+                <Image
+                  src="/clubs/fuse.jpg"
+                  alt="9 Clubs"
+                  width={600}
+                  height={400}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-extrabold">9 Clubs</h3>
+                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+                  Dance the night away in 9 clubs: electro, techno, afro, latino.
+                </p>
+              </div>
             </div>
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {museums.map((museum) => (
-                <div
-                  key={museum.id}
-                  className="bg-white border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
-                >
-                  {museum.pictures?.[0] ? (
-                    <div className="w-full h-56 bg-gray-200 overflow-hidden relative">
-                      <span className="absolute top-3 left-3 z-10 bg-white/90 text-xs font-semibold uppercase tracking-wider px-3 py-1 border border-gray-200">
-                        culture
-                      </span>
-                      <img src={museum.pictures[0]} alt={museum.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-400 text-sm uppercase">Photo</span>
-                    </div>
-                  )}
-                  <div className="p-5">
-                    <h3 className="text-lg font-extrabold text-gray-900">{museum.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{museum.address}</p>
-                    {museum.websiteUrl && (
-                      <a href={museum.websiteUrl.startsWith("http") ? museum.websiteUrl : `https://${museum.websiteUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-sm text-[#1a7fc7] hover:underline">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                        {museum.websiteUrl.replace(/^https?:\/\//, "")}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
+
+            {/* Card 2 — Atomium */}
+            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
+              <div className="w-full h-56">
+                <Image
+                  src="/museums/atomium.jpg"
+                  alt="Atomium & Brussels Design Museum"
+                  width={600}
+                  height={400}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-extrabold">
+                  Atomium &amp; Brussels Design Museum
+                </h3>
+                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+                  Explore the iconic Atomium and the Design Museum.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 3 — Museums */}
+            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
+              <div className="w-full h-56">
+                <Image
+                  src="/museums/garderobe-mannekenpis.jpg"
+                  alt="5 Brussels Museums"
+                  width={600}
+                  height={400}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-extrabold">5 Brussels Museums</h3>
+                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+                  Discover 5 museums showcasing the city&apos;s rich history and
+                  contemporary art scene.
+                </p>
+              </div>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* Pricing Section — matches original screenshot exactly */}
-      <section id="pricing" className="py-16 lg:py-20 bg-gray-50">
+      {/* ═══ 4. Pricing Section ═══ */}
+      <section id="pricing" className="py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-medium">
@@ -192,6 +388,36 @@ export default async function HomePage() {
               filled={true}
               passType="weekend"
             />
+          </div>
+
+          <div className="mt-10 text-center">
+            <Link
+              href="/buy-ticket"
+              className="inline-block bg-black text-white text-sm font-semibold uppercase tracking-wide px-10 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
+            >
+              Buy Now
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 5. Partners Section ═══ */}
+      <section className="py-16 lg:py-20 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl sm:text-3xl font-light italic text-gray-700">
+            They also love to party.
+          </h2>
+
+          <div className="mt-12 flex items-center justify-center gap-16 flex-wrap">
+            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
+              atomium
+            </span>
+            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
+              visit.brussels
+            </span>
+            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
+              BXL - La Ville de Stad
+            </span>
           </div>
         </div>
       </section>
