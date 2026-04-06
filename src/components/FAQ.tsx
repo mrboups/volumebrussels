@@ -4,27 +4,29 @@ import { useState } from "react";
 
 const faqs = [
   {
-    question: "How does the pass work?",
+    question: "Where can I use the Volume Pass?",
     answer:
-      "Your pass is valid indefinitely until first use. Show it at the club door, staff validates your entry. Night pass gives 24h access to 2 clubs, Weekend gives 48h unlimited.",
+      "The pass is valid in Brussels' eight major clubs. Brussels' nightlife offer is primarily concentrated during the weekend. Consult the calendar to find out what's on offer at these eight venues.",
   },
   {
-    question: "Do I need to print anything?",
-    answer: "No, just show the pass on your phone.",
-  },
-  {
-    question: "Are museums included?",
+    question: "How long is the Volume Pass valid?",
     answer:
-      "Yes, free access to the Atomium, Design Museum, and 5 Brussels City Museums.",
+      "The pass must be used within 12 months of purchase. In concrete terms, it is valid for 48 hours from the date of activation, with the time slots for use are from 20:00 in the evening to 05:00 in the morning.",
   },
   {
-    question: "Can I get a refund?",
-    answer: "Yes, unused passes can be refunded anytime.",
-  },
-  {
-    question: "When can I use it?",
+    question: "Are drinks included?",
     answer:
-      "Clubs are open Friday and Saturday nights. Museums are open during regular hours.",
+      "The Volume Pass gives you access to the capital's eight main clubs. In addition to entry, you get skip-the-line access. Drinks and other services are not included in the pass.",
+  },
+  {
+    question: "Where are the clubs and parties?",
+    answer:
+      "All the clubs are located in or around the city centre, at a walking distance from each other. Feel free to check out where they are on our map.",
+  },
+  {
+    question: "Can an inappropriate attitude or dress code restrict access to certain venues?",
+    answer:
+      "No club tolerates aggressive, harassing or discriminatory behaviour. Clubs reserve the right to exclude or refuse entry to people who do not respect the values they uphold. The majority of clubs do not require a dress code, however, where this is specified, please follow the dress code.",
   },
 ];
 

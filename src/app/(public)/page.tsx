@@ -316,7 +316,25 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ═══ 4. Pricing Section ═══ */}
+      {/* ═══ 4. What's On — EmbedSocial Instagram ═══ */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-extrabold">{"What's On"}</h2>
+          <div className="mt-8">
+            <div
+              className="embedsocial-hashtag"
+              data-ref="e0647ca3b95dcb0c67a6edb18799370458262528"
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `(function(d, s, id) { var js; if (d.getElementById(id)) {return;} js = d.createElement(s); js.id = id; js.src = "https://embedsocial.com/cdn/ht.js"; d.getElementsByTagName("head")[0].appendChild(js); }(document, "script", "EmbedSocialHashtagScript"));`,
+              }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 5. Pricing Section ═══ */}
       <section id="pricing" className="py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto">
@@ -363,23 +381,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ═══ 5. Partners Section ═══ */}
+      {/* ═══ 7. Partners Section ═══ */}
       <section className="py-16 lg:py-20 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl font-light italic text-gray-700">
+          <p className="text-xl sm:text-2xl font-light italic text-gray-600">
             They also love to party.
-          </h2>
+          </p>
 
-          <div className="mt-12 flex items-center justify-center gap-16 flex-wrap">
-            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
-              atomium
-            </span>
-            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
-              visit.brussels
-            </span>
-            <span className="text-xl font-bold text-gray-400 uppercase tracking-wider">
-              BXL - La Ville de Stad
-            </span>
+          <div className="mt-12 flex items-center justify-center gap-16 sm:gap-24 flex-wrap">
+            <img src="/sponsors/atomium.png" alt="Atomium" className="h-12 w-auto object-contain" />
+            <img src="/sponsors/visitbrussels.jpeg" alt="visit.brussels" className="h-12 w-auto object-contain" />
+            <img src="/sponsors/bxl.png" alt="BXL La Ville de Stad" className="h-12 w-auto object-contain" />
           </div>
         </div>
       </section>
