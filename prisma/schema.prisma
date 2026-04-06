@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  club
+  reseller
+  customer
+}
+
+enum PassType {
+  night
+  weekend
+}
+
+enum PassStatus {
+  purchased
+  active
+  expired
+  refunded
+}
+
+enum TicketStatus {
+  purchased
+  used
+  expired
+  refunded
+}
+
+enum PricingPhaseName {
+  early_bird
+  regular
+  last_minute
+}
+
+enum DayOfWeek {
+  friday
+  saturday
+  sunday
+}
+
+enum PassInclusion {
+  friday
+  saturday
+  both
+  weekend
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      UserRole @default(customer)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  passes         Pass[]
+  tickets        Ticket[]
+  reseller       Reseller?
+  clubAccounts   ClubAccount[]
+  passScansDone  PassScan[]    @relation("scannedByUser")
+}
+
+model Club {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  address       String
+  description   String?       @db.Text
+  pictures      String[]
+  instagramUrl  String?
+  facebookUrl   String?
+  payPerVisit   Float         @default(10)
+  openDays      DayOfWeek[]
+  passInclusion PassInclusion @default(both)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  events       Event[]
+  passScans    PassScan[]
+  clubAccounts ClubAccount[]
+}
+
+model Museum {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  address      String
+  description  String?  @db.Text
+  pictures     String[]
+  websiteUrl   String?
+  payPerVisit  Float    @default(8)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  passScans PassScan[]
+}
+
+model Pass {
+  id               String     @id @default(cuid())
+  type             PassType
+  price            Float
+  userId           String
+  stripePaymentId  String?
+  status           PassStatus @default(purchased)
+  activatedAt      DateTime?
+  expiresAt        DateTime?
+  resellerId       String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  reseller Reseller? @relation(fields: [resellerId], references: [id])
+  scans    PassScan[]
+
+  @@index([userId])
+  @@index([resellerId])
+  @@index([status])
+}
+
+model PassScan {
+  id         String   @id @default(cuid())
+  passId     String
+  clubId     String?
+  museumId   String?
+  scannedAt  DateTime @default(now())
+  scannedBy  String?
+
+  pass        Pass    @relation(fields: [passId], references: [id])
+  club        Club?   @relation(fields: [clubId], references: [id])
+  museum      Museum? @relation(fields: [museumId], references: [id])
+  scannedUser User?   @relation("scannedByUser", fields: [scannedBy], references: [id])
+
+  @@index([passId])
+  @@index([clubId])
+  @@index([museumId])
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?  @db.Text
+  coverImage     String?
+  clubId         String
+  date           DateTime
+  isLinkedToPass Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  club          Club           @relation(fields: [clubId], references: [id])
+  tickets       Ticket[]
+  pricingPhases PricingPhase[]
+
+  @@index([clubId])
+  @@index([date])
+}
+
+model Ticket {
+  id               String       @id @default(cuid())
+  eventId          String
+  userId           String
+  stripePaymentId  String?
+  status           TicketStatus @default(purchased)
+  pricePaid        Float
+  pricingPhase     PricingPhaseName
+  resellerId       String?
+  validatedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  event    Event     @relation(fields: [eventId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  reseller Reseller? @relation(fields: [resellerId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([resellerId])
+  @@index([status])
+}
+
+model PricingPhase {
+  id        String           @id @default(cuid())
+  eventId   String
+  name      PricingPhaseName
+  price     Float
+  startDate DateTime
+  endDate   DateTime
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+}
+
+model Reseller {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  commissionRate Float   @default(0.08)
+  magicLinkToken String? @unique
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id])
+  passes  Pass[]
+  tickets Ticket[]
+}
+
+model ClubAccount {
+  id             String  @id @default(cuid())
+  clubId         String
+  userId         String
+  magicLinkToken String? @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([clubId])
+  @@index([userId])
+}
