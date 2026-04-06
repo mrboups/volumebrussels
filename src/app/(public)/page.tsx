@@ -163,7 +163,7 @@ export default async function HomePage() {
       {/* ═══ 2. Agenda Section ═══ */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold">Agenda</h2>
+          <h2 className="text-3xl sm:text-4xl font-light">Agenda</h2>
 
           {events.length === 0 ? (
             <p className="mt-12 text-center text-gray-400">
@@ -248,70 +248,88 @@ export default async function HomePage() {
       {/* ═══ 3. A Whole City Experience ═══ */}
       <section className="py-16 lg:py-20 bg-[#1a7fc7] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center">
             A Whole City Experience
           </h2>
 
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Card 1 — Clubs */}
-            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
-              <div className="w-full h-56">
-                <Image
-                  src="/clubs/fuse.jpg"
+            <Link href="/offer" className="group bg-white rounded-2xl overflow-hidden text-gray-900 hover:shadow-2xl transition-shadow">
+              <div className="w-full h-64 relative overflow-hidden">
+                <img
+                  src="/city/clubs.jpeg"
                   alt="9 Clubs"
-                  width={600}
-                  height={400}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-sm font-semibold px-6 py-2.5 rounded">
+                    View
+                  </span>
+                </div>
               </div>
-              <div className="p-6">
-                <h3 className="text-xl font-extrabold">9 Clubs</h3>
-                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+              <div className="p-5">
+                <h3 className="text-lg font-bold">9 Clubs</h3>
+                <p className="mt-1 text-gray-500 text-sm leading-relaxed">
                   Dance the night away in 9 clubs: electro, techno, afro, latino.
                 </p>
               </div>
-            </div>
+            </Link>
 
             {/* Card 2 — Atomium */}
-            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
-              <div className="w-full h-56">
-                <Image
-                  src="/museums/atomium.jpg"
+            <Link href="/offer" className="group bg-white rounded-2xl overflow-hidden text-gray-900 hover:shadow-2xl transition-shadow">
+              <div className="w-full h-64 relative overflow-hidden">
+                <img
+                  src="/city/atomium.jpeg"
                   alt="Atomium & Brussels Design Museum"
-                  width={600}
-                  height={400}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-sm font-semibold px-6 py-2.5 rounded">
+                    View
+                  </span>
+                </div>
               </div>
-              <div className="p-6">
-                <h3 className="text-xl font-extrabold">
+              <div className="p-5">
+                <h3 className="text-lg font-bold">
                   Atomium &amp; Brussels Design Museum
                 </h3>
-                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+                <p className="mt-1 text-gray-500 text-sm leading-relaxed">
                   Explore the iconic Atomium and the Design Museum.
                 </p>
               </div>
-            </div>
+            </Link>
 
             {/* Card 3 — Museums */}
-            <div className="bg-white rounded-2xl overflow-hidden text-gray-900">
-              <div className="w-full h-56">
-                <Image
-                  src="/museums/garderobe-mannekenpis.jpg"
+            <Link href="/museums" className="group bg-white rounded-2xl overflow-hidden text-gray-900 hover:shadow-2xl transition-shadow">
+              <div className="w-full h-64 relative overflow-hidden">
+                <img
+                  src="/city/museums.png"
                   alt="5 Brussels Museums"
-                  width={600}
-                  height={400}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-sm font-semibold px-6 py-2.5 rounded">
+                    View
+                  </span>
+                </div>
               </div>
-              <div className="p-6">
-                <h3 className="text-xl font-extrabold">5 Brussels Museums</h3>
-                <p className="mt-2 text-gray-500 text-sm leading-relaxed">
+              <div className="p-5">
+                <h3 className="text-lg font-bold">5 Brussels Museums</h3>
+                <p className="mt-1 text-gray-500 text-sm leading-relaxed">
                   Discover 5 museums showcasing the city&apos;s rich history and
                   contemporary art scene.
                 </p>
               </div>
-            </div>
+            </Link>
+          </div>
+
+          <div className="mt-10 text-center">
+            <Link
+              href="/buy-ticket"
+              className="inline-block bg-white text-black text-sm font-semibold px-10 py-3.5 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              Buy Now
+            </Link>
           </div>
         </div>
       </section>
