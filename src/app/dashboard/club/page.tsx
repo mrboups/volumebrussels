@@ -33,7 +33,7 @@ export default async function ClubDashboardPage({
   const scanClubFilter = clubFilter.id ? { clubId: clubFilter.id } : { clubId: { not: null as string | null } };
 
   const [clubs, visitsThisMonth, visitsAllTime, recentScans] = await Promise.all([
-    db.club.findMany({ where: clubWhere, orderBy: { name: "asc" } }),
+    db.club.findMany({ where: clubWhere, orderBy: { sortOrder: "asc" } }),
     db.passScan.count({
       where: { ...scanClubFilter, scannedAt: { gte: startOfMonth } },
     }),
@@ -73,6 +73,31 @@ export default async function ClubDashboardPage({
       visitsThisMonth: thisMonth,
       revenueAllTime: allTime * club.payPerVisit,
       revenueThisMonth: thisMonth * club.payPerVisit,
+    };
+  });
+
+  // Museum data
+  const museums = await db.museum.findMany({ orderBy: { sortOrder: "asc" } });
+  const museumScanCounts = await db.passScan.groupBy({
+    by: ["museumId"],
+    where: { museumId: { not: null } },
+    _count: { id: true },
+  });
+  const museumScanCountsThisMonth = await db.passScan.groupBy({
+    by: ["museumId"],
+    where: { museumId: { not: null }, scannedAt: { gte: startOfMonth } },
+    _count: { id: true },
+  });
+
+  const revenueByMuseum = museums.map((museum) => {
+    const allTime = museumScanCounts.find((s) => s.museumId === museum.id)?._count.id ?? 0;
+    const thisMonth = museumScanCountsThisMonth.find((s) => s.museumId === museum.id)?._count.id ?? 0;
+    return {
+      name: museum.name,
+      totalVisits: allTime,
+      visitsThisMonth: thisMonth,
+      revenueAllTime: allTime * museum.payPerVisit,
+      revenueThisMonth: thisMonth * museum.payPerVisit,
     };
   });
 
@@ -126,6 +151,42 @@ export default async function ClubDashboardPage({
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
                     No clubs found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Revenue by Museum */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Revenue by Museum</h2>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-gray-500">
+                <th className="px-4 py-3 font-medium">Museum Name</th>
+                <th className="px-4 py-3 font-medium">Visits (Month)</th>
+                <th className="px-4 py-3 font-medium">Revenue (Month)</th>
+                <th className="px-4 py-3 font-medium">Total Visits</th>
+                <th className="px-4 py-3 font-medium">Total Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {revenueByMuseum.map((row) => (
+                <tr key={row.name} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.visitsThisMonth}</td>
+                  <td className="px-4 py-3 text-gray-600">{eur.format(row.revenueThisMonth)}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.totalVisits}</td>
+                  <td className="px-4 py-3 text-gray-600">{eur.format(row.revenueAllTime)}</td>
+                </tr>
+              ))}
+              {revenueByMuseum.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                    No museums found.
                   </td>
                 </tr>
               )}
