@@ -20,10 +20,12 @@ export default function PricingCard({
   passType,
 }: PricingCardProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleBuy() {
     if (loading) return;
     setLoading(true);
+    setError(null);
 
     try {
       // Check for reseller tracking parameter
@@ -36,7 +38,13 @@ export default function PricingCard({
         body: JSON.stringify({ passType, resellerId }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error("Server error. Please try again.");
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to start checkout");
@@ -47,6 +55,7 @@ export default function PricingCard({
       }
     } catch (err) {
       console.error("Checkout error:", err);
+      setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
     }
   }
@@ -77,6 +86,9 @@ export default function PricingCard({
       >
         {loading ? "Redirecting..." : "Buy Now"}
       </button>
+      {error && (
+        <p className="mt-3 text-xs text-red-500">{error}</p>
+      )}
     </div>
   );
 }
