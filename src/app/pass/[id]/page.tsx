@@ -1,8 +1,13 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import PassClient from "./PassClient";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function PassPage({
   params,

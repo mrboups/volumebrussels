@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /pass/
+Disallow: /ticket/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /checkout/
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://www.volumebrussels.com/sitemap.xml
