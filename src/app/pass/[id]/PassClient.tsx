@@ -477,15 +477,23 @@ export default function PassClient({
           <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-2">
             Museums
           </h2>
-          <p className="text-gray-500 text-xs mb-4">
-            Museums do not activate your pass. Accessible for 1 week after
-            activation.
-          </p>
+          {/* Museum info box */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+            <p className="text-blue-800 text-xs font-semibold mb-1">How museum access works</p>
+            <p className="text-blue-700 text-xs leading-relaxed">
+              Museum vouchers are valid from the day of purchase. After your first club check-in, museums remain accessible for one week.
+            </p>
+            {pass.status === "expired" && (
+              <p className="text-green-700 text-xs font-semibold mt-2">
+                Your club pass has expired, but your museum access is still valid until next Friday.
+              </p>
+            )}
+          </div>
 
           {!canCheckInMuseum && pass.status === "purchased" && (
-            <div className="bg-gray-200 px-4 py-3 mb-4 rounded">
+            <div className="bg-gray-100 px-4 py-3 mb-4 rounded">
               <p className="text-gray-500 text-xs text-center">
-                Activate your pass at a club first to access museums.
+                Museum vouchers are ready to use. No club activation needed.
               </p>
             </div>
           )}

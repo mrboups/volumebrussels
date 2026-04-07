@@ -5,60 +5,45 @@ function computeExpiresAt(passType: string, now: Date): Date {
   const day = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
 
   if (passType === "night") {
-    // Night pass: expires next day at 11:00 AM
     if (day === 5) {
-      // Friday -> Saturday 11:00 AM
+      // Friday night → Saturday 18:00
       const expires = new Date(now);
       expires.setDate(expires.getDate() + 1);
-      expires.setHours(11, 0, 0, 0);
+      expires.setHours(18, 0, 0, 0);
       return expires;
     }
-    if (day === 6) {
-      // Saturday -> Sunday 11:00 AM
+    if (day === 6 || (day === 0 && now.getHours() < 6)) {
+      // Saturday night → Sunday 00:00 (midnight)
       const expires = new Date(now);
-      expires.setDate(expires.getDate() + 1);
-      expires.setHours(11, 0, 0, 0);
+      if (day === 6) expires.setDate(expires.getDate() + 1);
+      expires.setHours(0, 0, 0, 0);
+      if (day === 6) return expires;
+      // Sunday early morning (after midnight Saturday) → already Sunday
+      expires.setHours(0, 0, 0, 0);
       return expires;
     }
-    if (day === 0 && now.getHours() < 11) {
-      // Sunday before 11AM (Saturday night continuation) -> Sunday 11:00 AM
-      const expires = new Date(now);
-      expires.setHours(11, 0, 0, 0);
-      return expires;
-    }
-    // Fallback: next day 11:00 AM
+    // Fallback: next day 18:00
     const expires = new Date(now);
     expires.setDate(expires.getDate() + 1);
-    expires.setHours(11, 0, 0, 0);
+    expires.setHours(18, 0, 0, 0);
     return expires;
   }
 
   if (passType === "weekend") {
-    if (day === 5) {
-      // Friday -> Sunday 23:59
-      const expires = new Date(now);
-      expires.setDate(expires.getDate() + 2);
+    // Weekend pass always expires Sunday 00:00 (midnight end of Sunday)
+    const daysUntilSunday = (7 - day) % 7;
+    const expires = new Date(now);
+    if (daysUntilSunday === 0 && now.getHours() >= 0) {
+      // Already Sunday → end of today
       expires.setHours(23, 59, 59, 999);
       return expires;
     }
-    if (day === 6) {
-      // Saturday -> Sunday 23:59
-      const expires = new Date(now);
-      expires.setDate(expires.getDate() + 1);
-      expires.setHours(23, 59, 59, 999);
-      return expires;
-    }
-    if (day === 0 && now.getHours() < 23) {
-      // Sunday -> Sunday 23:59
-      const expires = new Date(now);
-      expires.setHours(23, 59, 59, 999);
-      return expires;
-    }
-    // Fallback: +48h
-    return new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    expires.setDate(expires.getDate() + daysUntilSunday);
+    expires.setHours(23, 59, 59, 999);
+    return expires;
   }
 
-  // Fallback
+  // Fallback: +24h
   return new Date(now.getTime() + 24 * 60 * 60 * 1000);
 }
 
