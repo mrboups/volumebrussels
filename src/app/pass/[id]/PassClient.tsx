@@ -267,21 +267,11 @@ export default function PassClient({
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-lg mx-auto px-4 py-0">
-        {/* Header */}
+        {/* Header with pass info */}
         <div
-          className="text-center py-8 -mx-4"
+          className="-mx-4 px-5 py-6"
           style={{ backgroundColor: "#1a7fc7" }}
         >
-          <h1 className="text-3xl font-extrabold uppercase tracking-widest mb-1">
-            VOLUME
-          </h1>
-          <p className="text-white/80 text-sm font-medium">
-            {pass.type === "night" ? "Night Pass" : "Weekend Pass"}
-          </p>
-        </div>
-
-        {/* Pass Info */}
-        <div className="bg-neutral-900 p-5 mt-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-lg font-bold uppercase tracking-wide">
               {pass.type === "night" ? "Night Pass" : "Weekend Pass"}
@@ -290,45 +280,44 @@ export default function PassClient({
           </div>
 
           {pass.status === "active" && pass.activatedAt && (
-            <p className="text-neutral-400 text-xs mb-1">
+            <p className="text-white/60 text-xs mb-1">
               Activated {formatTimestamp(pass.activatedAt)}
             </p>
           )}
 
           {pass.status === "active" && pass.expiresAt && (
-            <p className="text-green-400 text-sm font-semibold">
+            <p className="text-green-300 text-sm font-semibold">
               Valid until {formatTime(pass.expiresAt)}
             </p>
           )}
 
           {pass.status === "purchased" && (
-            <p className="text-neutral-400 text-sm">
+            <p className="text-white/70 text-sm">
               Not yet activated. Check in at a club to activate.
             </p>
           )}
 
           {pass.status === "expired" && (
-            <p className="text-red-400 text-sm">This pass has expired.</p>
+            <p className="text-red-300 text-sm">This pass has expired.</p>
           )}
 
           {pass.status === "refunded" && (
-            <p className="text-neutral-400 text-sm">
+            <p className="text-white/60 text-sm">
               This pass has been refunded.
             </p>
           )}
 
           {clubsRemaining !== null && (
-            <p className="text-neutral-500 text-xs mt-2 uppercase tracking-wide">
+            <p className="text-white/50 text-xs mt-2 uppercase tracking-wide">
               {clubsRemaining} club{clubsRemaining !== 1 ? "s" : ""} remaining
             </p>
           )}
         </div>
 
         {/* Warning */}
-        <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6">
+        <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6 mt-4">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide text-center">
-            Show this ticket at the event. Do not click on ticket by yourself or
-            you will lose access.
+            Show this ticket at the entrance of the club.
           </p>
         </div>
 
