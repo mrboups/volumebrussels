@@ -373,7 +373,7 @@ export default function PassClient({
         {/* Warning */}
         <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6 mt-4">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide text-center">
-            Show this ticket at the entrance of the club.
+            Show this ticket at the entrance of the club to check in.
           </p>
         </div>
 
