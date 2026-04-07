@@ -268,10 +268,7 @@ export default function PassClient({
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-lg mx-auto px-4 py-0">
         {/* Header with pass info */}
-        <div
-          className="-mx-4 px-5 py-6"
-          style={{ backgroundColor: "#1a7fc7" }}
-        >
+        <div className="-mx-4 px-5 py-6 bg-neutral-900">
           <div className="flex items-center justify-between mb-3">
             <span className="text-lg font-bold uppercase tracking-wide">
               {pass.type === "night" ? "Night Pass" : "Weekend Pass"}
@@ -316,14 +313,14 @@ export default function PassClient({
 
         {/* Assign additional passes — right below header */}
         {siblingPasses.length > 0 && (
-          <div className="bg-white text-black -mx-4 px-5 py-4 border-b-2 border-[#1a7fc7]">
+          <div className="bg-neutral-800 text-white -mx-4 px-5 py-4 border-t border-neutral-700">
             <p className="text-sm font-bold uppercase tracking-wide mb-3">
               {siblingPasses.length} additional pass{siblingPasses.length > 1 ? "es" : ""} to assign
             </p>
             {siblingPasses.map((sp, i) => (
               <div key={sp.id} className="flex items-center gap-2 mt-2">
                 {assignedIds.has(sp.id) ? (
-                  <p className="text-green-600 text-sm font-semibold">Pass #{i + 2} sent!</p>
+                  <p className="text-green-400 text-sm font-semibold">Pass #{i + 2} sent!</p>
                 ) : assigningId === sp.id ? (
                   <>
                     <input
@@ -331,7 +328,7 @@ export default function PassClient({
                       placeholder="Enter email address"
                       value={assignEmail}
                       onChange={(e) => setAssignEmail(e.target.value)}
-                      className="flex-1 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-[#1a7fc7] focus:outline-none"
+                      className="flex-1 bg-neutral-900 border border-neutral-600 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-400 focus:outline-none"
                     />
                     <button
                       onClick={async () => {
@@ -350,11 +347,11 @@ export default function PassClient({
                           setAssignError(d.error || "Failed");
                         }
                       }}
-                      className="bg-[#1a7fc7] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1565a0] cursor-pointer"
+                      className="bg-white text-black text-sm font-semibold px-4 py-2 rounded-lg hover:bg-neutral-200 cursor-pointer"
                     >
                       Send
                     </button>
-                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-gray-400 text-sm cursor-pointer">Cancel</button>
+                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-neutral-500 text-sm cursor-pointer">Cancel</button>
                   </>
                 ) : (
                   <button
@@ -366,7 +363,7 @@ export default function PassClient({
                 )}
               </div>
             ))}
-            {assignError && <p className="text-red-500 text-sm mt-2">{assignError}</p>}
+            {assignError && <p className="text-red-400 text-sm mt-2">{assignError}</p>}
           </div>
         )}
 
