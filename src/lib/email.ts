@@ -12,7 +12,7 @@ export function getResend(): Resend {
   return _resend;
 }
 
-export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Volume Brussels <onboarding@resend.dev>";
+export const FROM_EMAIL = "Volume Brussels <noreply@volumebrussels.com>";
 
 interface SendPassEmailParams {
   to: string;
