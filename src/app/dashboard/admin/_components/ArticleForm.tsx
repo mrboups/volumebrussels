@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef } from "react";
 import Link from "next/link";
 import ImageUpload from "@/components/ImageUpload";
 
@@ -12,33 +13,123 @@ interface ArticleData {
   sortOrder: number;
 }
 
+interface EventOption {
+  id: string;
+  name: string;
+  description: string | null;
+  venueName: string | null;
+  date: string;
+}
+
 export default function ArticleForm({
   article,
   action,
+  events = [],
 }: {
   article?: ArticleData;
   action: (formData: FormData) => Promise<void>;
+  events?: EventOption[];
 }) {
+  const [generating, setGenerating] = useState(false);
+  const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  function handleEventSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const eventId = e.target.value;
+    if (!eventId) return;
+    const ev = events.find((ev) => ev.id === eventId);
+    if (ev && titleRef.current && !titleRef.current.value.trim()) {
+      titleRef.current.value = ev.name;
+    }
+  }
+
+  async function handleGenerate() {
+    const title = titleRef.current?.value?.trim();
+    if (!title) { alert("Enter a title first"); return; }
+
+    // If an event is selected, include its info in the prompt
+    const selectEl = document.querySelector<HTMLSelectElement>('select[data-event-select]');
+    const selectedEventId = selectEl?.value;
+    const selectedEvent = selectedEventId ? events.find((ev) => ev.id === selectedEventId) : null;
+    const eventContext = selectedEvent
+      ? ` This article is about the event "${selectedEvent.name}" at ${selectedEvent.venueName || "Brussels"} on ${selectedEvent.date}. Event description: ${selectedEvent.description || "N/A"}.`
+      : "";
+
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, eventContext }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (summaryRef.current) summaryRef.current.value = data.summary || "";
+        if (contentRef.current) contentRef.current.value = data.content || "";
+      } else {
+        alert(data.error || "Generation failed");
+      }
+    } catch {
+      alert("Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <form action={action} className="space-y-6 max-w-2xl">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Title
         </label>
-        <input
-          name="title"
-          type="text"
-          required
-          defaultValue={article?.title ?? ""}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-        />
+        <div className="flex gap-2">
+          <input
+            ref={titleRef}
+            name="title"
+            type="text"
+            required
+            defaultValue={article?.title ?? ""}
+            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+          />
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-wait cursor-pointer whitespace-nowrap"
+          >
+            {generating ? "Generating..." : "Write with AI"}
+          </button>
+        </div>
       </div>
+
+      {events.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Based on event (optional)
+          </label>
+          <select
+            data-event-select=""
+            onChange={handleEventSelect}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+          >
+            <option value="">No event — write freely</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.name} — {ev.date}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">Select an event to auto-fill the title and provide context to the AI.</p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Summary
         </label>
         <textarea
+          ref={summaryRef}
           name="summary"
           rows={3}
           defaultValue={article?.summary ?? ""}
@@ -51,6 +142,7 @@ export default function ArticleForm({
           Content
         </label>
         <textarea
+          ref={contentRef}
           name="content"
           rows={12}
           required
