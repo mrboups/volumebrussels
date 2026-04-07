@@ -163,14 +163,25 @@ export default function PassClient({
 
   const canCheckInClub =
     pass.status === "purchased" || pass.status === "active";
-  const canCheckInMuseum = pass.status === "active";
 
+  // Museum access: valid from purchase, stays valid until Friday after activation weekend
   const museumAccessExpired = (() => {
-    if (!pass.activatedAt) return false;
-    const deadline = new Date(pass.activatedAt);
-    deadline.setDate(deadline.getDate() + 7);
+    if (!pass.activatedAt) return false; // Not activated yet = museums still accessible
+    const activated = new Date(pass.activatedAt);
+    // Find the next Friday 23:59 after activation
+    const dayOfWeek = activated.getDay();
+    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysUntilFriday === 0) daysUntilFriday = 7; // If activated on Friday, next Friday
+    const deadline = new Date(activated);
+    deadline.setDate(deadline.getDate() + daysUntilFriday);
+    deadline.setHours(23, 59, 59, 999);
     return new Date() > deadline;
   })();
+
+  // Museums accessible: always (from purchase) unless museum deadline passed
+  const canCheckInMuseum = !museumAccessExpired;
+  const museumActive = !museumAccessExpired;
+  const clubExpiredMuseumActive = pass.status === "expired" && museumActive;
 
   const handleClubScan = useCallback(
     async (clubId: string) => {
@@ -295,7 +306,12 @@ export default function PassClient({
           )}
 
           {pass.status === "expired" && (
-            <p className="text-red-300 text-sm">This pass has expired.</p>
+            <>
+              <p className="text-red-300 text-sm">Club pass has expired.</p>
+              <a href="#museums" className="text-green-400 text-xs mt-2 uppercase tracking-wide block hover:underline">
+                Your pass is still valid to visit museums until Friday &darr;
+              </a>
+            </>
           )}
 
           {pass.status === "refunded" && (
@@ -304,7 +320,7 @@ export default function PassClient({
             </p>
           )}
 
-          {clubsRemaining !== null && (
+          {pass.status !== "expired" && pass.status !== "refunded" && clubsRemaining !== null && (
             <p className="text-white/50 text-xs mt-2 uppercase tracking-wide">
               {clubsRemaining} club{clubsRemaining !== 1 ? "s" : ""} remaining
             </p>
@@ -381,8 +397,11 @@ export default function PassClient({
           </div>
         )}
 
+        {/* Clubs & Museums wrapper for ordering */}
+        <div className="flex flex-col">
+
         {/* Clubs Section */}
-        <div className="mb-8">
+        <div className={`mb-8 ${pass.status === "expired" ? "order-2" : "order-1"}`}>
           <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4">
             Clubs
           </h2>
@@ -473,30 +492,19 @@ export default function PassClient({
         </div>
 
         {/* Museums Section — light mode */}
-        <div className="mb-8 bg-gray-50 -mx-4 px-4 py-6">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-2">
-            Museums
-          </h2>
-          {/* Museum info box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
-            <p className="text-blue-800 text-xs font-semibold mb-1">How museum access works</p>
-            <p className="text-blue-700 text-xs leading-relaxed">
-              Museum vouchers are valid from the day of purchase. After your first club check-in, museums remain accessible for one week.
-            </p>
-            {pass.status === "expired" && (
-              <p className="text-green-700 text-xs font-semibold mt-2">
-                Your club pass has expired, but your museum access is still valid until next Friday.
-              </p>
-            )}
+        <div id="museums" className={`mb-8 bg-gray-50 -mx-4 px-4 py-6 ${pass.status === "expired" ? "order-1" : "order-2"}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600">
+              Museums
+            </h2>
+            <span
+              className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-sm ${
+                museumActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
+              }`}
+            >
+              {museumActive ? "Active" : "Expired"}
+            </span>
           </div>
-
-          {!canCheckInMuseum && pass.status === "purchased" && (
-            <div className="bg-gray-100 px-4 py-3 mb-4 rounded">
-              <p className="text-gray-500 text-xs text-center">
-                Museum vouchers are ready to use. No club activation needed.
-              </p>
-            </div>
-          )}
 
           {museumAccessExpired && (
             <div className="bg-red-50 px-4 py-3 mb-4 rounded">
@@ -510,7 +518,7 @@ export default function PassClient({
             {sortedMuseums.map((museum) => {
               const checkedIn = isMuseumCheckedIn(museum.id);
               const scan = getMuseumScan(museum.id);
-              const disabled = !canCheckInMuseum || museumAccessExpired;
+              const disabled = museumAccessExpired;
 
               return (
                 <div
@@ -587,6 +595,8 @@ export default function PassClient({
             })}
           </div>
         </div>
+
+        </div>{/* End flex wrapper */}
       </div>
     </main>
   );
