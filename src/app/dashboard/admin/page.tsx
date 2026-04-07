@@ -139,7 +139,16 @@ export default async function AdminDashboardPage() {
                   <td className="px-4 py-3 text-gray-600">{pass.user.email}</td>
                   <td className="px-4 py-3 text-gray-600">{pass._count.scans}</td>
                   <td className="px-4 py-3">
-                    <PassActions passId={pass.id} currentEmail={pass.user.email} />
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/pass/${pass.id}`}
+                        target="_blank"
+                        className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                      >
+                        View
+                      </Link>
+                      <PassActions passId={pass.id} currentEmail={pass.user.email} />
+                    </div>
                   </td>
                 </tr>
               ))}
