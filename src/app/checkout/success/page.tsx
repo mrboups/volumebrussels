@@ -13,24 +13,31 @@ export default async function CheckoutSuccessPage({
 
   let passId: string | null = null;
   let passType: string | null = null;
+  let passCount = 1;
+  let paymentIntentId: string | null = null;
 
   if (session_id) {
     try {
       const stripe = getStripe();
       const session = await stripe.checkout.sessions.retrieve(session_id);
       passType = session.metadata?.passType || null;
+      const quantity = parseInt(session.metadata?.quantity || "1", 10) || 1;
 
-      // Find the pass created by the webhook
+      // Find the passes created by the webhook
       if (session.payment_intent) {
-        const paymentIntentId =
+        paymentIntentId =
           typeof session.payment_intent === "string"
             ? session.payment_intent
             : session.payment_intent.id;
-        const pass = await db.pass.findFirst({
+        const passes = await db.pass.findMany({
           where: { stripePaymentId: paymentIntentId },
+          orderBy: { createdAt: "asc" },
         });
-        if (pass) {
-          passId = pass.id;
+        if (passes.length > 0) {
+          passId = passes[0].id;
+          passCount = passes.length;
+        } else {
+          passCount = quantity;
         }
       }
     } catch {
@@ -60,7 +67,11 @@ export default async function CheckoutSuccessPage({
           </svg>
         </div>
 
-        <h1 className="mt-6 text-2xl font-bold">Thank you for your purchase.</h1>
+        <h1 className="mt-6 text-2xl font-bold">
+          {passCount > 1
+            ? `You purchased ${passCount} passes!`
+            : "Thank you for your purchase."}
+        </h1>
 
         <div className="mt-6 text-gray-600 leading-relaxed text-sm space-y-4">
           <p>
@@ -81,7 +92,15 @@ export default async function CheckoutSuccessPage({
           If you have any questions, our 24/7 support chat is here to help.
         </p>
 
-        {passId && (
+        {passId && passCount > 1 && paymentIntentId && (
+          <Link
+            href={`/passes/manage/${paymentIntentId}`}
+            className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
+          >
+            Assign Passes
+          </Link>
+        )}
+        {passId && passCount === 1 && (
           <Link
             href={`/pass/${passId}`}
             className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-900 transition-colors"

@@ -10,10 +10,13 @@ const PASS_PRICES: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { passType, resellerId } = body as {
+    const { passType, resellerId, quantity: rawQuantity } = body as {
       passType: string;
       resellerId?: string;
+      quantity?: number;
     };
+
+    const quantity = Math.max(1, Math.min(10, Math.floor(Number(rawQuantity) || 1)));
 
     const passConfig = PASS_PRICES[passType];
     if (!passConfig) {
@@ -39,11 +42,12 @@ export async function POST(req: NextRequest) {
             },
             unit_amount: passConfig.amount,
           },
-          quantity: 1,
+          quantity,
         },
       ],
       metadata: {
         passType,
+        quantity: String(quantity),
         ...(resellerId ? { resellerId } : {}),
       },
       locale: "en",

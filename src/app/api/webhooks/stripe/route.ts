@@ -82,24 +82,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // Create the pass
-  const priceInEuros = (session.amount_total ?? 0) / 100;
-  const pass = await db.pass.create({
-    data: {
-      type: passType,
-      price: priceInEuros,
-      userId: user.id,
-      stripePaymentId: session.payment_intent as string | null,
-      status: "purchased",
-      resellerId: validResellerId,
-    },
-  });
+  // Create passes (quantity can be 1-10)
+  const quantity = Math.max(1, Math.min(10, parseInt(session.metadata?.quantity || "1", 10) || 1));
+  const totalPriceInEuros = (session.amount_total ?? 0) / 100;
+  const pricePerPass = totalPriceInEuros / quantity;
+  const stripePaymentId = session.payment_intent as string | null;
 
-  // Send confirmation email
+  const createdPasses = [];
+  for (let i = 0; i < quantity; i++) {
+    const pass = await db.pass.create({
+      data: {
+        type: passType,
+        price: pricePerPass,
+        userId: user.id,
+        stripePaymentId,
+        status: "purchased",
+        resellerId: validResellerId,
+      },
+    });
+    createdPasses.push(pass);
+  }
+
+  // Send confirmation email only for the first pass (the buyer's)
   try {
     await sendPassEmail({
       to: customerEmail,
-      passId: pass.id,
+      passId: createdPasses[0].id,
       passType,
       customerName: user.name || undefined,
     });
@@ -108,11 +116,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // Do not fail the webhook — the pass is created, email is best-effort
   }
 
-  console.log("Pass created:", {
-    passId: pass.id,
+  console.log("Passes created:", {
+    count: quantity,
+    passIds: createdPasses.map((p) => p.id),
     type: passType,
     userId: user.id,
-    price: priceInEuros,
+    pricePerPass,
     resellerId: validResellerId,
   });
 }
