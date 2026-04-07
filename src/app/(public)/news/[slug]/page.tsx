@@ -55,10 +55,33 @@ export default async function ArticlePage({
           </p>
         )}
 
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
+        <div className="text-gray-800 text-lg leading-relaxed space-y-4">
+          {article.content.split("\n").map((line, i) => {
+            const trimmed = line.trim();
+            if (!trimmed) return <br key={i} />;
+
+            // Image URL on its own line
+            if (/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(trimmed)) {
+              return <img key={i} src={trimmed} alt="" className="w-full rounded-lg my-4" />;
+            }
+
+            // Render line with auto-linked URLs
+            const parts = trimmed.split(/(https?:\/\/[^\s]+)/g);
+            return (
+              <p key={i}>
+                {parts.map((part, j) =>
+                  /^https?:\/\//.test(part) ? (
+                    <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-[#1a7fc7] hover:underline break-all">
+                      {part}
+                    </a>
+                  ) : (
+                    <span key={j}>{part}</span>
+                  )
+                )}
+              </p>
+            );
+          })}
+        </div>
 
         <div className="mt-16 pt-8 border-t border-gray-200">
           <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ImageUpload from "@/components/ImageUpload";
 
 interface ArticleData {
   title: string;
@@ -47,28 +48,26 @@ export default function ArticleForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Content (HTML)
+          Content
         </label>
         <textarea
           name="content"
           rows={12}
           required
           defaultValue={article?.content ?? ""}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
         />
+        <p className="mt-1 text-xs text-gray-400 leading-relaxed">
+          Write plain text. Line breaks are preserved. URLs starting with http are auto-linked.
+          Image URLs (ending in .jpg, .png, .webp, .gif) are displayed as full-width images.
+        </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Cover Image URL
+          Cover Image
         </label>
-        <input
-          name="coverImage"
-          type="text"
-          defaultValue={article?.coverImage ?? ""}
-          placeholder="https://..."
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-        />
+        <ImageUpload name="coverImage" currentImage={article?.coverImage} />
       </div>
 
       <div>

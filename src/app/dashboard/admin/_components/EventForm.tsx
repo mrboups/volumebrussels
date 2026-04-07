@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ImageUpload from "@/components/ImageUpload";
 
 function slugify(name: string) {
   return name
@@ -128,13 +129,8 @@ export default function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
-        <input
-          name="coverImage"
-          type="url"
-          defaultValue={event?.coverImage ?? ""}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
-        />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
+        <ImageUpload name="coverImage" currentImage={event?.coverImage} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
