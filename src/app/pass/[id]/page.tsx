@@ -40,7 +40,7 @@ export default async function PassPage({
   // Get clubs based on pass inclusion rules
   const clubs = await db.club.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
+    orderBy: { sortOrder: "asc" },
   });
 
   // Filter clubs based on pass type and passInclusion
@@ -60,7 +60,7 @@ export default async function PassPage({
 
   const museums = await db.museum.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
+    orderBy: { sortOrder: "asc" },
   });
 
   // Serialize dates for client component
