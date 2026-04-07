@@ -102,11 +102,24 @@ export default async function PassPage({
     updatedAt: museum.updatedAt.toISOString(),
   }));
 
+  // Find sibling passes (same purchase) that need assignment
+  let siblingPasses: { id: string; userId: string }[] = [];
+  if (pass.stripePaymentId) {
+    const allPasses = await db.pass.findMany({
+      where: { stripePaymentId: pass.stripePaymentId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, userId: true },
+    });
+    // Siblings are passes from same purchase that are NOT this one
+    siblingPasses = allPasses.filter((p) => p.id !== pass.id);
+  }
+
   return (
     <PassClient
       pass={serializedPass}
       clubs={serializedClubs}
       museums={serializedMuseums}
+      siblingPasses={siblingPasses}
     />
   );
 }

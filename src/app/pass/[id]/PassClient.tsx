@@ -59,10 +59,16 @@ interface Pass {
   scans: Scan[];
 }
 
+interface SiblingPass {
+  id: string;
+  userId: string;
+}
+
 interface PassClientProps {
   pass: Pass;
   clubs: Club[];
   museums: Museum[];
+  siblingPasses?: SiblingPass[];
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -121,9 +127,14 @@ export default function PassClient({
   pass: initialPass,
   clubs,
   museums,
+  siblingPasses = [],
 }: PassClientProps) {
   const [pass, setPass] = useState<Pass>(initialPass);
   const [error, setError] = useState<string | null>(null);
+  const [assignEmail, setAssignEmail] = useState("");
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const clubScans = pass.scans.filter((s) => s.clubId !== null);
   const museumScans = pass.scans.filter((s) => s.museumId !== null);
@@ -321,6 +332,62 @@ export default function PassClient({
           </p>
         </div>
 
+        {/* Assign additional passes */}
+        {siblingPasses.length > 0 && (
+          <div className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 mb-6">
+            <p className="text-neutral-300 text-xs font-semibold uppercase tracking-wide mb-2">
+              {siblingPasses.length} additional pass{siblingPasses.length > 1 ? "es" : ""} to assign
+            </p>
+            {siblingPasses.map((sp, i) => (
+              <div key={sp.id} className="flex items-center gap-2 mt-2">
+                {assignedIds.has(sp.id) ? (
+                  <p className="text-green-400 text-xs">Pass #{i + 2} sent</p>
+                ) : assigningId === sp.id ? (
+                  <>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={assignEmail}
+                      onChange={(e) => setAssignEmail(e.target.value)}
+                      className="flex-1 bg-neutral-900 border border-neutral-600 rounded px-2 py-1.5 text-xs text-white placeholder-neutral-500"
+                    />
+                    <button
+                      onClick={async () => {
+                        setAssignError(null);
+                        const res = await fetch("/api/passes/assign", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ passId: sp.id, email: assignEmail }),
+                        });
+                        if (res.ok) {
+                          setAssignedIds((prev) => new Set([...prev, sp.id]));
+                          setAssigningId(null);
+                          setAssignEmail("");
+                        } else {
+                          const d = await res.json().catch(() => ({}));
+                          setAssignError(d.error || "Failed");
+                        }
+                      }}
+                      className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded hover:bg-neutral-200 cursor-pointer"
+                    >
+                      Send
+                    </button>
+                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-neutral-500 text-xs cursor-pointer">Cancel</button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setAssigningId(sp.id)}
+                    className="text-blue-400 text-xs hover:text-blue-300 cursor-pointer"
+                  >
+                    Assign pass #{i + 2}
+                  </button>
+                )}
+              </div>
+            ))}
+            {assignError && <p className="text-red-400 text-xs mt-2">{assignError}</p>}
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="bg-red-900/30 border border-red-700/50 px-4 py-3 mb-4">
@@ -421,7 +488,7 @@ export default function PassClient({
 
         {/* Museums Section */}
         <div className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-400 mb-2">
             Museums
           </h2>
           <p className="text-neutral-600 text-xs mb-4">
@@ -454,7 +521,7 @@ export default function PassClient({
               return (
                 <div
                   key={museum.id}
-                  className="bg-neutral-900 overflow-hidden"
+                  className="bg-neutral-800 overflow-hidden"
                 >
                   <div className="relative w-full h-32">
                     <Image

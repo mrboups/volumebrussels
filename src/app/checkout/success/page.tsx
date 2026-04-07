@@ -92,15 +92,7 @@ export default async function CheckoutSuccessPage({
           If you have any questions, our 24/7 support chat is here to help.
         </p>
 
-        {passId && passCount > 1 && paymentIntentId && (
-          <Link
-            href={`/passes/manage/${paymentIntentId}`}
-            className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
-          >
-            Assign Passes
-          </Link>
-        )}
-        {passId && passCount === 1 && (
+        {passId && (
           <Link
             href={`/pass/${passId}`}
             className="inline-block mt-8 bg-black text-white font-semibold uppercase tracking-wide text-sm px-8 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
