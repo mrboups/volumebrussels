@@ -15,6 +15,7 @@ interface ClubData {
   slug: string;
   address: string;
   description: string | null;
+  contactEmail: string | null;
   payPerVisit: number;
   openDays: string[];
   passInclusion: string;
@@ -90,6 +91,17 @@ export default function ClubForm({
           name="description"
           rows={3}
           defaultValue={club?.description ?? ""}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+        <input
+          name="contactEmail"
+          type="email"
+          defaultValue={club?.contactEmail ?? ""}
+          placeholder="club@example.com"
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
         />
       </div>

@@ -29,6 +29,28 @@ export default async function ClubDashboardPage({
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // Calculate completed quarters for quarterly reports
+  const currentQuarter = Math.ceil((now.getMonth() + 1) / 3);
+  const currentYear = now.getFullYear();
+  const completedQuarters: { quarter: number; year: number; label: string }[] = [];
+  const quarterLabels: Record<number, string> = {
+    1: "Jan - Mar",
+    2: "Apr - Jun",
+    3: "Jul - Sep",
+    4: "Oct - Dec",
+  };
+  // Go back up to 8 quarters
+  for (let i = 0; i < 8; i++) {
+    let q = currentQuarter - 1 - i;
+    let y = currentYear;
+    while (q <= 0) { q += 4; y -= 1; }
+    completedQuarters.push({
+      quarter: q,
+      year: y,
+      label: `Q${q} ${y} (${quarterLabels[q]})`,
+    });
+  }
+
   const clubWhere = clubFilter.id ? { id: clubFilter.id } : {};
   const scanClubFilter = clubFilter.id ? { clubId: clubFilter.id } : { clubId: { not: null as string | null } };
 
@@ -100,6 +122,34 @@ export default async function ClubDashboardPage({
       revenueThisMonth: thisMonth * museum.payPerVisit,
     };
   });
+
+  // Quarterly report data
+  const quarterlyData = await Promise.all(
+    completedQuarters.map(async ({ quarter, year, label }) => {
+      const startMonth = (quarter - 1) * 3;
+      const startDate = new Date(year, startMonth, 1);
+      const endDate = new Date(year, startMonth + 3, 1);
+
+      const visits = await db.passScan.count({
+        where: {
+          ...scanClubFilter,
+          scannedAt: { gte: startDate, lt: endDate },
+        },
+      });
+
+      const revenuePerClub = clubs.map((club) => club.payPerVisit);
+      // For single club, use its rate; for all clubs, approximate
+      const avgRate = clubs.length > 0
+        ? clubs.reduce((sum, c) => sum + c.payPerVisit, 0) / clubs.length
+        : 10;
+
+      return {
+        label,
+        visits,
+        revenue: visits * avgRate,
+      };
+    })
+  );
 
   const totalRevenueThisMonth = revenueByClub.reduce((sum, c) => sum + c.revenueThisMonth, 0);
 
@@ -231,6 +281,38 @@ export default async function ClubDashboardPage({
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
                     No visits found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Quarterly Reports */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Quarterly Reports</h2>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-gray-500">
+                <th className="px-4 py-3 font-medium">Period</th>
+                <th className="px-4 py-3 font-medium">Visits</th>
+                <th className="px-4 py-3 font-medium">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quarterlyData.map((row) => (
+                <tr key={row.label} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.label}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.visits}</td>
+                  <td className="px-4 py-3 text-gray-600">{eur.format(row.revenue)}</td>
+                </tr>
+              ))}
+              {quarterlyData.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
+                    No completed quarters yet.
                   </td>
                 </tr>
               )}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { deleteClub, updateSortOrder } from "../_actions";
 import DeleteButton from "../_components/DeleteButton";
 import InlineOrder from "../_components/InlineOrder";
+import MagicLinkButton from "../_components/MagicLinkButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function ClubsPage() {
               <th className="px-4 py-3 font-medium">Pay/Visit</th>
               <th className="px-4 py-3 font-medium">Music Tags</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Magic Link</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
@@ -78,6 +80,9 @@ export default async function ClubsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
+                  <MagicLinkButton type="club" entityId={club.id} />
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/dashboard/admin/clubs/${club.id}/edit`}
@@ -92,7 +97,7 @@ export default async function ClubsPage() {
             ))}
             {clubs.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
                   No clubs found.
                 </td>
               </tr>

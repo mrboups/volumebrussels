@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(req: NextRequest) {
+  const half = parseInt(req.nextUrl.searchParams.get("half") || "1");
+  const year = parseInt(req.nextUrl.searchParams.get("year") || String(new Date().getFullYear()));
+
+  const startMonth = half === 1 ? 0 : 6;
+  const startDate = new Date(year, startMonth, 1);
+  const endDate = new Date(year, startMonth + 6, 1);
+
+  const resellers = await db.reseller.findMany({
+    where: { isActive: true },
+    include: { user: { select: { name: true, email: true } } },
+  });
+
+  const result = await Promise.all(
+    resellers.map(async (r) => {
+      const passes = await db.pass.findMany({
+        where: {
+          resellerId: r.id,
+          createdAt: { gte: startDate, lt: endDate },
+        },
+        select: { price: true },
+      });
+
+      const salesCount = passes.length;
+      const salesAmount = passes.reduce((sum, p) => sum + p.price, 0);
+      const commission = salesAmount * r.commissionRate;
+
+      return {
+        resellerId: r.id,
+        name: r.user.name || r.user.email,
+        email: r.user.email,
+        salesCount,
+        salesAmount,
+        commission,
+      };
+    })
+  );
+
+  return NextResponse.json({ resellers: result });
+}

@@ -16,6 +16,8 @@ const adminSubItems = [
   { href: "/dashboard/admin/museums", label: "Museums" },
   { href: "/dashboard/admin/events", label: "Events" },
   { href: "/dashboard/admin/articles", label: "Articles" },
+  { href: "/dashboard/admin/resellers", label: "Resellers" },
+  { href: "/dashboard/admin/reports", label: "Reports" },
 ];
 
 export default function DashboardLayout({
@@ -123,7 +125,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 overflow-auto min-h-screen">
+      <main className="flex-1 lg:ml-64 pt-16 lg:pt-6 p-4 sm:p-6 lg:p-8 overflow-auto min-h-screen">
         {children}
       </main>
     </div>
