@@ -314,31 +314,24 @@ export default function PassClient({
           )}
         </div>
 
-        {/* Warning */}
-        <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6 mt-4">
-          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide text-center">
-            Show this ticket at the entrance of the club.
-          </p>
-        </div>
-
-        {/* Assign additional passes */}
+        {/* Assign additional passes — right below header */}
         {siblingPasses.length > 0 && (
-          <div className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 mb-6">
-            <p className="text-neutral-300 text-xs font-semibold uppercase tracking-wide mb-2">
+          <div className="bg-white text-black -mx-4 px-5 py-4 border-b-2 border-[#1a7fc7]">
+            <p className="text-sm font-bold uppercase tracking-wide mb-3">
               {siblingPasses.length} additional pass{siblingPasses.length > 1 ? "es" : ""} to assign
             </p>
             {siblingPasses.map((sp, i) => (
               <div key={sp.id} className="flex items-center gap-2 mt-2">
                 {assignedIds.has(sp.id) ? (
-                  <p className="text-green-400 text-xs">Pass #{i + 2} sent</p>
+                  <p className="text-green-600 text-sm font-semibold">Pass #{i + 2} sent!</p>
                 ) : assigningId === sp.id ? (
                   <>
                     <input
                       type="email"
-                      placeholder="Email"
+                      placeholder="Enter email address"
                       value={assignEmail}
                       onChange={(e) => setAssignEmail(e.target.value)}
-                      className="flex-1 bg-neutral-900 border border-neutral-600 rounded px-2 py-1.5 text-xs text-white placeholder-neutral-500"
+                      className="flex-1 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-[#1a7fc7] focus:outline-none"
                     />
                     <button
                       onClick={async () => {
@@ -357,25 +350,32 @@ export default function PassClient({
                           setAssignError(d.error || "Failed");
                         }
                       }}
-                      className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded hover:bg-neutral-200 cursor-pointer"
+                      className="bg-[#1a7fc7] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1565a0] cursor-pointer"
                     >
                       Send
                     </button>
-                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-neutral-500 text-xs cursor-pointer">Cancel</button>
+                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-gray-400 text-sm cursor-pointer">Cancel</button>
                   </>
                 ) : (
                   <button
                     onClick={() => setAssigningId(sp.id)}
-                    className="text-blue-400 text-xs hover:text-blue-300 cursor-pointer"
+                    className="bg-[#1a7fc7] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1565a0] cursor-pointer"
                   >
                     Assign pass #{i + 2}
                   </button>
                 )}
               </div>
             ))}
-            {assignError && <p className="text-red-400 text-xs mt-2">{assignError}</p>}
+            {assignError && <p className="text-red-500 text-sm mt-2">{assignError}</p>}
           </div>
         )}
+
+        {/* Warning */}
+        <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6 mt-4">
+          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide text-center">
+            Show this ticket at the entrance of the club.
+          </p>
+        </div>
 
         {/* Error */}
         {error && (
