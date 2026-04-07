@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
-import PassActions from "./_components/PassActions";
+import PassGroup from "./_components/PassGroup";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,16 @@ export default async function AdminDashboardPage() {
     db.pass.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { email: true } }, _count: { select: { scans: true } } },
+      select: {
+        id: true,
+        createdAt: true,
+        type: true,
+        price: true,
+        status: true,
+        stripePaymentId: true,
+        user: { select: { email: true } },
+        _count: { select: { scans: true } },
+      },
     }),
     db.passScan.findMany({
       take: 20,
@@ -49,6 +58,28 @@ export default async function AdminDashboardPage() {
   ]);
 
   const totalRevenue = revenueAgg._sum.price ?? 0;
+
+  // Group passes by stripePaymentId
+  const groupMap = new Map<string, typeof recentPasses>();
+  let ungroupedIdx = 0;
+  for (const pass of recentPasses) {
+    const key = pass.stripePaymentId ?? `__solo_${ungroupedIdx++}`;
+    const group = groupMap.get(key);
+    if (group) {
+      group.push(pass);
+    } else {
+      groupMap.set(key, [pass]);
+    }
+  }
+  const passGroups = Array.from(groupMap.values());
+
+  // Serialize dates for client component
+  const serializedGroups = passGroups.map((group) =>
+    group.map((pass) => ({
+      ...pass,
+      createdAt: pass.createdAt.toISOString(),
+    }))
+  );
 
   const stats = [
     { label: "Total Passes Sold", value: totalPasses.toLocaleString() },
@@ -116,47 +147,8 @@ export default async function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {recentPasses.map((pass) => (
-                <tr key={pass.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-600">
-                    {pass.createdAt.toLocaleDateString("fr-BE")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded">
-                      {pass.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{eur.format(pass.price)}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
-                        pass.status === "active"
-                          ? "bg-green-50 text-green-700"
-                          : pass.status === "expired"
-                          ? "bg-gray-100 text-gray-500"
-                          : pass.status === "refunded"
-                          ? "bg-red-50 text-red-700"
-                          : "bg-blue-50 text-blue-700"
-                      }`}
-                    >
-                      {pass.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{pass.user.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{pass._count.scans}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/pass/${pass.id}`}
-                        target="_blank"
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                      >
-                        View
-                      </Link>
-                      <PassActions passId={pass.id} currentEmail={pass.user.email} />
-                    </div>
-                  </td>
-                </tr>
+              {serializedGroups.map((group) => (
+                <PassGroup key={group[0].id} passes={group} />
               ))}
               {recentPasses.length === 0 && (
                 <tr>

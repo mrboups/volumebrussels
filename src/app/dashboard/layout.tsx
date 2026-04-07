@@ -58,7 +58,7 @@ export default function DashboardLayout({
               >
                 {item.label}
               </Link>
-              {item.href === "/dashboard/admin" && isSection && (
+              {item.href === "/dashboard/admin" && (
                 <div className="ml-3 mt-1 space-y-0.5">
                   {adminSubItems.map((sub) => {
                     const subActive = pathname.startsWith(sub.href);
