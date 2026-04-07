@@ -10,6 +10,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Title required" }, { status: 400 });
     }
 
+    if (!OPENAI_API_KEY) {
+      return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 500 });
+    }
+
     const userPrompt = eventContext
       ? `Write an article with the title: "${title}".${eventContext}`
       : `Write an article with the title: "${title}"`;
@@ -45,8 +49,8 @@ Return a JSON object with these fields:
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI error:", err);
-      return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
+      console.error("OpenAI error:", res.status, err);
+      return NextResponse.json({ error: `AI error: ${res.status}` }, { status: 500 });
     }
 
     const data = await res.json();
