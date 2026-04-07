@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 
-// TEST PRICES — change to 2900/4800 for production
-const PASS_PRICES: Record<string, { amount: number; name: string }> = {
-  night: { amount: 50, name: "Night Pass — One night of clubbing" },
-  weekend: { amount: 50, name: "Weekend Pass — 48h Clubbing Weekend" },
+// Stripe Price IDs (TEST: 0.50 EUR — create new prices at 29/48 EUR for production)
+const PASS_STRIPE_PRICES: Record<string, string> = {
+  night: "price_1TJNTOHKSMaEcP9CbjAE7NIi",
+  weekend: "price_1TJNTOHKSMaEcP9CEbGlmYtK",
 };
 
 export async function POST(req: NextRequest) {
@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
 
     const quantity = Math.max(1, Math.min(10, Math.floor(Number(rawQuantity) || 1)));
 
-    const passConfig = PASS_PRICES[passType];
-    if (!passConfig) {
+    const priceId = PASS_STRIPE_PRICES[passType];
+    if (!priceId) {
       return NextResponse.json({ error: "Invalid pass type" }, { status: 400 });
     }
 
@@ -31,27 +31,20 @@ export async function POST(req: NextRequest) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: passConfig.name,
-              description:
-                passType === "night"
-                  ? "Skip line access to 2 clubs + museums"
-                  : "Unlimited access to all clubs + museums",
-            },
-            unit_amount: passConfig.amount,
-          },
+          price: priceId,
           quantity,
+          adjustable_quantity: {
+            enabled: true,
+            minimum: 1,
+            maximum: 10,
+          },
         },
       ],
       metadata: {
         passType,
-        quantity: String(quantity),
         ...(resellerId ? { resellerId } : {}),
       },
       locale: "en",
-      currency: "eur",
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/buy-ticket`,
     });

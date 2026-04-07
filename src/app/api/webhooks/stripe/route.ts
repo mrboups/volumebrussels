@@ -82,8 +82,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // Create passes (quantity can be 1-10)
-  const quantity = Math.max(1, Math.min(10, parseInt(session.metadata?.quantity || "1", 10) || 1));
+  // Get actual quantity from Stripe line items (user may have adjusted on checkout page)
+  const stripe = getStripe();
+  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+  const actualQuantity = lineItems.data[0]?.quantity ?? 1;
+  const quantity = Math.max(1, Math.min(10, actualQuantity));
   const totalPriceInEuros = (session.amount_total ?? 0) / 100;
   const pricePerPass = totalPriceInEuros / quantity;
   const stripePaymentId = session.payment_intent as string | null;
