@@ -486,27 +486,27 @@ export default function PassClient({
           </div>
         </div>
 
-        {/* Museums Section */}
-        <div className="mb-8">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-400 mb-2">
+        {/* Museums Section — light mode */}
+        <div className="mb-8 bg-gray-50 -mx-4 px-4 py-6">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-2">
             Museums
           </h2>
-          <p className="text-neutral-600 text-xs mb-4">
+          <p className="text-gray-500 text-xs mb-4">
             Museums do not activate your pass. Accessible for 1 week after
             activation.
           </p>
 
           {!canCheckInMuseum && pass.status === "purchased" && (
-            <div className="bg-neutral-900 px-4 py-3 mb-4">
-              <p className="text-neutral-500 text-xs text-center">
+            <div className="bg-gray-200 px-4 py-3 mb-4 rounded">
+              <p className="text-gray-500 text-xs text-center">
                 Activate your pass at a club first to access museums.
               </p>
             </div>
           )}
 
           {museumAccessExpired && (
-            <div className="bg-neutral-900 px-4 py-3 mb-4">
-              <p className="text-red-400 text-xs text-center">
+            <div className="bg-red-50 px-4 py-3 mb-4 rounded">
+              <p className="text-red-500 text-xs text-center">
                 Museum access window has expired (1 week from activation).
               </p>
             </div>
@@ -521,7 +521,7 @@ export default function PassClient({
               return (
                 <div
                   key={museum.id}
-                  className="bg-neutral-800 overflow-hidden"
+                  className="bg-white overflow-hidden rounded-lg border border-gray-200"
                 >
                   <div className="relative w-full h-32">
                     <Image
@@ -532,9 +532,9 @@ export default function PassClient({
                       sizes="(max-width: 512px) 100vw, 512px"
                     />
                     {checkedIn && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
                         <svg
-                          className="w-10 h-10 text-green-500"
+                          className="w-10 h-10 text-green-600"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -551,10 +551,10 @@ export default function PassClient({
                   </div>
 
                   <div className="p-4">
-                    <h3 className="text-base font-bold uppercase tracking-wide">
+                    <h3 className="text-base font-bold uppercase tracking-wide text-gray-900">
                       {museum.name}
                     </h3>
-                    <p className="text-neutral-500 text-xs mt-1">
+                    <p className="text-gray-500 text-xs mt-1">
                       {museum.address}
                     </p>
 
