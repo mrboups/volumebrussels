@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard/admin", label: "Admin" },
@@ -23,75 +24,108 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const sidebar = (
+    <>
+      <div className="p-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <Link href="/" className="text-xl font-extrabold tracking-tight text-black">
+          VOLUME
+        </Link>
+        <button
+          className="lg:hidden text-gray-400 hover:text-black cursor-pointer"
+          onClick={() => setSidebarOpen(false)}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <nav className="p-4 space-y-1 flex-1">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          const isSection = pathname.startsWith(item.href);
+          return (
+            <div key={item.href}>
+              <Link
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-black text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-black"
+                }`}
+              >
+                {item.label}
+              </Link>
+              {item.href === "/dashboard/admin" && isSection && (
+                <div className="ml-3 mt-1 space-y-0.5">
+                  {adminSubItems.map((sub) => {
+                    const subActive = pathname.startsWith(sub.href);
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                          subActive
+                            ? "bg-gray-200 text-black"
+                            : "text-gray-500 hover:bg-gray-100 hover:text-black"
+                        }`}
+                      >
+                        {sub.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+      <div className="p-4 border-t border-gray-100 space-y-2">
+        <Link
+          href="/"
+          className="block px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+        >
+          &larr; Back to site
+        </Link>
+      </div>
+    </>
+  );
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between">
-        <div>
-          <div className="p-6 pb-4 border-b border-gray-100">
-            <Link href="/" className="text-xl font-extrabold tracking-tight text-black">
-              VOLUME
-            </Link>
-          </div>
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              const isSection = pathname.startsWith(item.href);
-              return (
-                <div key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-black text-white"
-                        : "text-gray-600 hover:bg-gray-100 hover:text-black"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                  {item.href === "/dashboard/admin" && isSection && (
-                    <div className="ml-3 mt-1 space-y-0.5">
-                      {adminSubItems.map((sub) => {
-                        const subActive = pathname.startsWith(sub.href);
-                        return (
-                          <Link
-                            key={sub.href}
-                            href={sub.href}
-                            className={`block px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                              subActive
-                                ? "bg-gray-200 text-black"
-                                : "text-gray-500 hover:bg-gray-100 hover:text-black"
-                            }`}
-                          >
-                            {sub.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <Link href="/dashboard/admin" className="text-lg font-extrabold tracking-tight text-black">
+          VOLUME
+        </Link>
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-1 cursor-pointer"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white flex flex-col">
+            {sidebar}
+          </aside>
         </div>
-        <div className="p-4 border-t border-gray-100 space-y-2">
-          <Link
-            href="/"
-            className="block px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
-          >
-            &larr; Back to site
-          </Link>
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col fixed top-0 bottom-0 left-0">
+        {sidebar}
       </aside>
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+
+      {/* Main content */}
+      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 overflow-auto min-h-screen">
+        {children}
+      </main>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export default function NewsCarousel({ articles }: { articles: Article[] }) {
       <style dangerouslySetInnerHTML={{ __html: `.news-carousel-scroll::-webkit-scrollbar { display: none; }` }} />
       <div
         ref={scrollRef}
-        className="news-carousel-scroll flex gap-4 overflow-x-scroll px-4 sm:px-6 lg:px-8"
+        className="news-carousel-scroll flex gap-6 overflow-x-scroll px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
         style={{
           scrollSnapType: "x mandatory",
           scrollbarWidth: "none",
@@ -63,7 +63,7 @@ export default function NewsCarousel({ articles }: { articles: Article[] }) {
           <Link
             key={article.id}
             href={`/news/${article.slug}`}
-            className="flex-shrink-0 w-[280px] sm:w-[350px] rounded-xl overflow-hidden relative group"
+            className="flex-shrink-0 w-[85vw] sm:w-[45vw] lg:w-[calc(50%-12px)] max-w-[600px] rounded-xl overflow-hidden relative group"
             style={{ scrollSnapAlign: "start" }}
           >
             <div className="relative h-72 sm:h-80 bg-gray-200">
