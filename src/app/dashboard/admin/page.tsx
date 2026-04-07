@@ -19,6 +19,7 @@ export default async function AdminDashboardPage() {
     clubCount,
     museumCount,
     eventCount,
+    articleCount,
     recentPasses,
     recentScans,
   ] = await Promise.all([
@@ -29,6 +30,7 @@ export default async function AdminDashboardPage() {
     db.club.count(),
     db.museum.count(),
     db.event.count(),
+    db.article.count(),
     db.pass.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -57,6 +59,7 @@ export default async function AdminDashboardPage() {
     { href: "/dashboard/admin/clubs", label: "Manage Clubs", count: clubCount },
     { href: "/dashboard/admin/museums", label: "Manage Museums", count: museumCount },
     { href: "/dashboard/admin/events", label: "Manage Events", count: eventCount },
+    { href: "/dashboard/admin/articles", label: "Manage Articles", count: articleCount },
   ];
 
   return (
@@ -76,7 +79,7 @@ export default async function AdminDashboardPage() {
       {/* Quick Links */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Links</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickLinks.map((link) => (
             <Link
               key={link.href}

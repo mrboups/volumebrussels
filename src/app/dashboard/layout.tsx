@@ -14,6 +14,7 @@ const adminSubItems = [
   { href: "/dashboard/admin/clubs", label: "Clubs" },
   { href: "/dashboard/admin/museums", label: "Museums" },
   { href: "/dashboard/admin/events", label: "Events" },
+  { href: "/dashboard/admin/articles", label: "Articles" },
 ];
 
 export default function DashboardLayout({

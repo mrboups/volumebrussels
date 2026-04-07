@@ -268,6 +268,60 @@ export async function deleteEvent(id: string) {
   revalidatePath("/dashboard/admin/events");
 }
 
+// --------------- ARTICLES ---------------
+
+export async function createArticle(formData: FormData) {
+  const title = formData.get("title") as string;
+  const slug = slugify(title);
+
+  await db.article.create({
+    data: {
+      title,
+      slug,
+      summary: (formData.get("summary") as string) || "",
+      content: (formData.get("content") as string) || "",
+      coverImage: (formData.get("coverImage") as string) || null,
+      isPublished: formData.get("isPublished") === "on",
+      sortOrder: parseInt(formData.get("sortOrder") as string) || 0,
+    },
+  });
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/articles");
+  revalidatePath("/");
+  redirect("/dashboard/admin/articles");
+}
+
+export async function updateArticle(id: string, formData: FormData) {
+  const title = formData.get("title") as string;
+  const slug = slugify(title);
+
+  await db.article.update({
+    where: { id },
+    data: {
+      title,
+      slug,
+      summary: (formData.get("summary") as string) || "",
+      content: (formData.get("content") as string) || "",
+      coverImage: (formData.get("coverImage") as string) || null,
+      isPublished: formData.get("isPublished") === "on",
+      sortOrder: parseInt(formData.get("sortOrder") as string) || 0,
+    },
+  });
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/articles");
+  revalidatePath("/");
+  redirect("/dashboard/admin/articles");
+}
+
+export async function deleteArticle(id: string) {
+  await db.article.delete({ where: { id } });
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/articles");
+  revalidatePath("/");
+}
+
 // --------------- PASS EMAIL ---------------
 
 export async function resendPassEmail(passId: string) {

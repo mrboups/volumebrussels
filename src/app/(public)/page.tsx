@@ -3,6 +3,7 @@ import Image from "next/image";
 import PricingCard from "@/components/PricingCard";
 import VideoOverlay from "@/components/VideoOverlay";
 import EmbedSocial from "@/components/EmbedSocial";
+import NewsCarousel from "@/components/NewsCarousel";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ const bulletPoints = [
 export default async function HomePage() {
   let clubs: Awaited<ReturnType<typeof db.club.findMany>> = [];
   let museums: Awaited<ReturnType<typeof db.museum.findMany>> = [];
+  let articles: Awaited<ReturnType<typeof db.article.findMany>> = [];
 
   try {
     clubs = await db.club.findMany({
@@ -91,6 +93,11 @@ export default async function HomePage() {
     museums = await db.museum.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
+    });
+    articles = await db.article.findMany({
+      where: { isPublished: true },
+      orderBy: { sortOrder: "asc" },
+      take: 10,
     });
   } catch {
     // DB not reachable during build
@@ -148,6 +155,25 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ═══ News Carousel ═══ */}
+      {articles.length > 0 && (
+        <section className="py-12 lg:py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-light mb-8">News</h2>
+          </div>
+          <NewsCarousel
+            articles={articles.map((a) => ({
+              id: a.id,
+              title: a.title,
+              slug: a.slug,
+              summary: a.summary,
+              coverImage: a.coverImage,
+              publishedAt: a.publishedAt.toISOString(),
+            }))}
+          />
+        </section>
+      )}
 
       {/* ═══ 2. Agenda Section ═══ */}
       <section className="py-16 lg:py-20 bg-white">
