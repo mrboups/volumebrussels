@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useEffect } from "react";
+import ImageUpload from "@/components/ImageUpload";
 
 function slugify(name: string) {
   return name
@@ -16,6 +17,7 @@ interface ClubData {
   address: string;
   description: string | null;
   contactEmail: string | null;
+  pictures: string[];
   payPerVisit: number;
   openDays: string[];
   passInclusion: string;
@@ -93,6 +95,11 @@ export default function ClubForm({
           defaultValue={club?.description ?? ""}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Club Picture</label>
+        <ImageUpload name="picture" currentImage={club?.pictures?.[0] || null} />
       </div>
 
       <div>

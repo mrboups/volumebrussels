@@ -68,11 +68,13 @@ export async function createClub(formData: FormData) {
       facebookUrl: (formData.get("facebookUrl") as string) || null,
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       isActive: formData.get("isActive") === "on",
-      pictures: [],
+      pictures: (formData.get("picture") as string) ? [formData.get("picture") as string] : [],
     },
   });
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/offer");
+  revalidatePath("/");
   redirect("/dashboard/admin/clubs");
 }
 
@@ -82,6 +84,7 @@ export async function updateClub(id: string, formData: FormData) {
   const openDays = splitTags(formData.get("openDays") as string || "");
   const musicTags = splitTags(formData.get("musicTags") as string || "");
   const dresscodeTags = splitTags(formData.get("dresscodeTags") as string || "");
+  const picture = formData.get("picture") as string;
 
   await db.club.update({
     where: { id },
@@ -102,10 +105,13 @@ export async function updateClub(id: string, formData: FormData) {
       facebookUrl: (formData.get("facebookUrl") as string) || null,
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       isActive: formData.get("isActive") === "on",
+      ...(picture ? { pictures: [picture] } : { pictures: [] }),
     },
   });
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/offer");
+  revalidatePath("/");
   redirect("/dashboard/admin/clubs");
 }
 
@@ -130,17 +136,20 @@ export async function createMuseum(formData: FormData) {
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       payPerVisit: parseFloat(formData.get("payPerVisit") as string) || 8,
       isActive: formData.get("isActive") === "on",
-      pictures: [],
+      pictures: (formData.get("picture") as string) ? [formData.get("picture") as string] : [],
     },
   });
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/offer");
+  revalidatePath("/");
   redirect("/dashboard/admin/museums");
 }
 
 export async function updateMuseum(id: string, formData: FormData) {
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
+  const picture = formData.get("picture") as string;
 
   await db.museum.update({
     where: { id },
@@ -152,10 +161,13 @@ export async function updateMuseum(id: string, formData: FormData) {
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       payPerVisit: parseFloat(formData.get("payPerVisit") as string) || 8,
       isActive: formData.get("isActive") === "on",
+      ...(picture ? { pictures: [picture] } : { pictures: [] }),
     },
   });
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/offer");
+  revalidatePath("/");
   redirect("/dashboard/admin/museums");
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ImageUpload from "@/components/ImageUpload";
 
 function slugify(name: string) {
   return name
@@ -17,6 +18,7 @@ interface MuseumData {
   description: string | null;
   websiteUrl: string | null;
   payPerVisit: number;
+  pictures: string[];
   isActive: boolean;
 }
 
@@ -102,6 +104,11 @@ export default function MuseumForm({
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Museum Picture</label>
+        <ImageUpload name="picture" currentImage={museum?.pictures?.[0] || null} />
       </div>
 
       <div>
