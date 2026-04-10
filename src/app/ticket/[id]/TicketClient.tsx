@@ -115,7 +115,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="text-center px-4 pt-4 pb-4">
+        <div className="text-center px-4 pt-2 pb-4">
           <h1 className="text-2xl font-extrabold uppercase tracking-widest mb-1">
             VOLUME
           </h1>
@@ -207,7 +207,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
               />
               <div className="mt-4 bg-red-900/30 border border-red-700/50 px-4 py-3">
                 <p className="text-red-400 text-xs font-bold uppercase tracking-wide text-center">
-                  Do not click on ticket by yourself or you will lose access to the event.
+                  Do not swipe the ticket by yourself or you will lose access to the event.
                 </p>
               </div>
             </>
