@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import { sendPassEmail } from "@/lib/email";
+import { sendPassEmail, sendTicketEmail } from "@/lib/email";
 import type Stripe from "stripe";
-import type { PassType } from "@/generated/prisma/client";
+import type { PassType, PricingPhaseName } from "@/generated/prisma/client";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -45,15 +45,28 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const passType = session.metadata?.passType as PassType | undefined;
-  const resellerId = session.metadata?.resellerId || null;
   const customerEmail = session.customer_details?.email;
 
-  if (!passType || !customerEmail) {
-    console.error("Missing passType or customer email in checkout session", {
+  if (!customerEmail) {
+    console.error("Missing customer email in checkout session", {
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  // Handle ticket purchases
+  if (session.metadata?.type === "ticket") {
+    await handleTicketCheckout(session, customerEmail);
+    return;
+  }
+
+  const passType = session.metadata?.passType as PassType | undefined;
+  const resellerId = session.metadata?.resellerId || null;
+
+  if (!passType) {
+    console.error("Missing passType in checkout session", {
       sessionId: session.id,
       passType,
-      customerEmail,
     });
     return;
   }
@@ -129,6 +142,82 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   });
 }
 
+async function handleTicketCheckout(
+  session: Stripe.Checkout.Session,
+  customerEmail: string
+) {
+  const eventId = session.metadata?.eventId;
+  const pricingPhaseName = session.metadata?.pricingPhaseName as
+    | PricingPhaseName
+    | undefined;
+
+  if (!eventId || !pricingPhaseName) {
+    console.error("Missing ticket metadata in checkout session", {
+      sessionId: session.id,
+      eventId,
+      pricingPhaseName,
+    });
+    return;
+  }
+
+  const event = await db.event.findUnique({ where: { id: eventId } });
+  if (!event) {
+    console.error("Event not found for ticket checkout", {
+      sessionId: session.id,
+      eventId,
+    });
+    return;
+  }
+
+  // Find or create user by email
+  let user = await db.user.findUnique({ where: { email: customerEmail } });
+  if (!user) {
+    user = await db.user.create({
+      data: {
+        email: customerEmail,
+        name: session.customer_details?.name || null,
+        role: "customer",
+      },
+    });
+  }
+
+  const pricePaid = (session.amount_total ?? 0) / 100;
+  const stripePaymentId = session.payment_intent as string | null;
+
+  const ticket = await db.ticket.create({
+    data: {
+      eventId: event.id,
+      userId: user.id,
+      stripePaymentId,
+      status: "purchased",
+      pricePaid,
+      pricingPhase: pricingPhaseName,
+    },
+  });
+
+  try {
+    await sendTicketEmail({
+      to: customerEmail,
+      ticketId: ticket.id,
+      eventName: event.name,
+      eventDate: event.date,
+      venueName: event.venueName || undefined,
+      price: pricePaid,
+      customerName: user.name || undefined,
+    });
+  } catch (emailErr) {
+    console.error("Failed to send ticket confirmation email:", emailErr);
+  }
+
+  console.log("Ticket created:", {
+    ticketId: ticket.id,
+    eventId: event.id,
+    userId: user.id,
+    pricePaid,
+    pricingPhase: pricingPhaseName,
+  });
+}
+
 async function handleChargeRefunded(charge: Stripe.Charge) {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
@@ -145,8 +234,14 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     data: { status: "refunded" },
   });
 
-  console.log("Refunded passes:", {
+  const updatedTickets = await db.ticket.updateMany({
+    where: { stripePaymentId: paymentIntentId },
+    data: { status: "refunded" },
+  });
+
+  console.log("Refunded passes/tickets:", {
     paymentIntentId,
-    count: updatedPasses.count,
+    passCount: updatedPasses.count,
+    ticketCount: updatedTickets.count,
   });
 }

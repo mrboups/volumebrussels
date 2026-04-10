@@ -3,6 +3,7 @@ import Link from "next/link";
 import { deleteEvent, toggleEventSales } from "../_actions";
 import DeleteButton from "../_components/DeleteButton";
 import ToggleSalesButton from "../_components/ToggleSalesButton";
+import { formatBrusselsDate } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function EventsPage() {
                   {event.club?.name ?? event.venueName ?? "-"}
                 </td>
                 <td className="px-4 py-3 text-gray-600">
-                  {event.date.toLocaleDateString("fr-BE")}
+                  {formatBrusselsDate(event.date)}
                 </td>
                 <td className="px-4 py-3">
                   {event.isLinkedToPass ? (

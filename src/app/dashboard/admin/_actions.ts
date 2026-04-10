@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { parseBrusselsDatetimeLocal } from "@/lib/tz";
 
 function slugify(name: string) {
   return name
@@ -212,7 +213,7 @@ export async function createEvent(formData: FormData) {
         coverImage: (formData.get("coverImage") as string) || null,
         venueName: (formData.get("venueName") as string) || null,
         venueAddress: (formData.get("venueAddress") as string) || null,
-        date: new Date(formData.get("date") as string),
+        date: parseBrusselsDatetimeLocal(formData.get("date") as string),
         clubId: clubId || null,
         isLinkedToPass: formData.get("isLinkedToPass") === "on",
         isActive: formData.get("isActive") === "on",
@@ -225,8 +226,8 @@ export async function createEvent(formData: FormData) {
           eventId: event.id,
           name: p.name as any,
           price: p.price,
-          startDate: new Date(p.startDate),
-          endDate: new Date(p.endDate),
+          startDate: parseBrusselsDatetimeLocal(p.startDate),
+          endDate: parseBrusselsDatetimeLocal(p.endDate),
         })),
       });
     }
@@ -254,7 +255,7 @@ export async function updateEvent(id: string, formData: FormData) {
         coverImage: (formData.get("coverImage") as string) || null,
         venueName: (formData.get("venueName") as string) || null,
         venueAddress: (formData.get("venueAddress") as string) || null,
-        date: new Date(formData.get("date") as string),
+        date: parseBrusselsDatetimeLocal(formData.get("date") as string),
         clubId: clubId || null,
         isLinkedToPass: formData.get("isLinkedToPass") === "on",
         isActive: formData.get("isActive") === "on",
@@ -270,8 +271,8 @@ export async function updateEvent(id: string, formData: FormData) {
           eventId: id,
           name: p.name as any,
           price: p.price,
-          startDate: new Date(p.startDate),
-          endDate: new Date(p.endDate),
+          startDate: parseBrusselsDatetimeLocal(p.startDate),
+          endDate: parseBrusselsDatetimeLocal(p.endDate),
         })),
       });
     }
@@ -668,6 +669,59 @@ export async function updatePassEmail(passId: string, newEmail: string) {
       passId: pass.id,
       passType: pass.type as "night" | "weekend",
       customerName: pass.user.name || undefined,
+    });
+    revalidatePath("/dashboard/admin");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send" };
+  }
+}
+
+// --------------- TICKET EMAIL ---------------
+
+export async function resendTicketEmail(ticketId: string) {
+  const ticket = await db.ticket.findUnique({
+    where: { id: ticketId },
+    include: { user: true, event: true },
+  });
+  if (!ticket) return { error: "Ticket not found" };
+  try {
+    const { sendTicketEmail } = await import("@/lib/email");
+    await sendTicketEmail({
+      to: ticket.user.email,
+      ticketId: ticket.id,
+      eventName: ticket.event.name,
+      eventDate: ticket.event.date,
+      venueName: ticket.event.venueName || undefined,
+      price: ticket.pricePaid,
+      customerName: ticket.user.name || undefined,
+    });
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send" };
+  }
+}
+
+export async function updateTicketEmail(ticketId: string, newEmail: string) {
+  const ticket = await db.ticket.findUnique({
+    where: { id: ticketId },
+    include: { user: true, event: true },
+  });
+  if (!ticket) return { error: "Ticket not found" };
+  await db.user.update({
+    where: { id: ticket.userId },
+    data: { email: newEmail },
+  });
+  try {
+    const { sendTicketEmail } = await import("@/lib/email");
+    await sendTicketEmail({
+      to: newEmail,
+      ticketId: ticket.id,
+      eventName: ticket.event.name,
+      eventDate: ticket.event.date,
+      venueName: ticket.event.venueName || undefined,
+      price: ticket.pricePaid,
+      customerName: ticket.user.name || undefined,
     });
     revalidatePath("/dashboard/admin");
     return { success: true };

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import SwipeSlider from "@/components/SwipeSlider";
 
 interface Club {
   id: string;
@@ -71,35 +72,25 @@ function getClubImage(slug: string): string {
 export default function TicketClient({ ticket: initialTicket }: TicketClientProps) {
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
   const [error, setError] = useState<string | null>(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const isValidated = ticket.status === "used" || ticket.validatedAt !== null;
 
   const handleValidate = useCallback(async () => {
     setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/tickets/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId: ticket.id }),
-      });
+    const res = await fetch("/api/tickets/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: ticket.id }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || "Failed to validate ticket");
-        return;
-      }
-
-      setTicket(data.ticket);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-      setShowConfirm(false);
+    if (!res.ok) {
+      setError(data.error || "Failed to validate ticket");
+      throw new Error(data.error);
     }
+
+    setTicket(data.ticket);
   }, [ticket.id]);
 
   const coverImage =
@@ -198,38 +189,11 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
               )}
             </div>
           ) : (
-            <>
-              {!showConfirm ? (
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  className="w-full py-4 bg-red-600 text-white text-base font-bold uppercase tracking-wide hover:bg-red-700 active:bg-red-800 transition-colors"
-                >
-                  Do Not Click! Only for Staff.
-                </button>
-              ) : (
-                <div className="bg-neutral-900 p-5">
-                  <p className="text-white text-sm font-semibold text-center mb-4">
-                    Are you sure? This will validate the ticket and cannot be undone.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowConfirm(false)}
-                      disabled={loading}
-                      className="flex-1 py-3 bg-neutral-700 text-white text-sm font-bold uppercase tracking-wide hover:bg-neutral-600 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleValidate}
-                      disabled={loading}
-                      className="flex-1 py-3 bg-red-600 text-white text-sm font-bold uppercase tracking-wide hover:bg-red-700 transition-colors"
-                    >
-                      {loading ? "Validating..." : "Confirm"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+            <SwipeSlider
+              onComplete={handleValidate}
+              label="Swipe to validate"
+              completedLabel="Validated"
+            />
           )}
         </div>
       </div>
