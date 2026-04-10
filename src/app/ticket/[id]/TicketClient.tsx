@@ -115,7 +115,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="text-center px-4 pt-8 pb-4">
+        <div className="text-center px-4 pt-4 pb-4">
           <h1 className="text-2xl font-extrabold uppercase tracking-widest mb-1">
             VOLUME
           </h1>
