@@ -9,6 +9,8 @@ const navItems = [
   { href: "/dashboard/club", label: "Club" },
   { href: "/dashboard/accounting", label: "Accounting" },
   { href: "/dashboard/reseller", label: "Reseller" },
+  { href: "/dashboard/passes", label: "Passes" },
+  { href: "/dashboard/tickets", label: "Tickets" },
 ];
 
 const adminSubItems = [
