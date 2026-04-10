@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import SwipeSlider from "@/components/SwipeSlider";
 
@@ -72,6 +72,21 @@ function getClubImage(slug: string): string {
 export default function TicketClient({ ticket: initialTicket }: TicketClientProps) {
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
   const [error, setError] = useState<string | null>(null);
+
+  // Force html/body backgrounds black so iOS overscroll and Crisp gutter
+  // don't reveal a white border above/below the dark ticket.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
+    html.style.backgroundColor = "#000";
+    body.style.backgroundColor = "#000";
+    return () => {
+      html.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+    };
+  }, []);
 
   const isValidated = ticket.status === "used" || ticket.validatedAt !== null;
 
