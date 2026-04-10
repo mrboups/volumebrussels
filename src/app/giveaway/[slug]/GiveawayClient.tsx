@@ -46,9 +46,22 @@ interface LangContent {
   successMessage: string;
 }
 
+// Matches URLs starting with http://, https:// or www.
+// Split uses a capturing group with /gi; test uses a non-global twin to
+// avoid lastIndex state leaking across calls.
+const URL_SPLIT = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+const URL_TEST = /^(?:https?:\/\/|www\.)/i;
+const IMAGE_LINE_PATTERN =
+  /^(?:https?:\/\/|www\.)[^\s]+\.(?:jpg|jpeg|png|webp|gif|svg)(?:\?[^\s]*)?$/i;
+
+function normalizeHref(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+}
+
 // Render a text block with:
 // - a standalone image URL line → <img>
-// - inline URLs → clickable <a>
+// - inline URLs (http/https/www.) → clickable <a>
 // - everything else → paragraphs preserving line breaks
 function RichText({ text }: { text: string }) {
   return (
@@ -58,11 +71,11 @@ function RichText({ text }: { text: string }) {
         if (!trimmed) return <div key={i} className="h-2" />;
 
         // Full-line image URL
-        if (/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(trimmed)) {
+        if (IMAGE_LINE_PATTERN.test(trimmed)) {
           return (
             <img
               key={i}
-              src={trimmed}
+              src={normalizeHref(trimmed)}
               alt=""
               className="w-full rounded-lg my-2"
             />
@@ -70,14 +83,14 @@ function RichText({ text }: { text: string }) {
         }
 
         // Linkify inline URLs
-        const parts = trimmed.split(/(https?:\/\/[^\s]+)/g);
+        const parts = trimmed.split(URL_SPLIT);
         return (
           <p key={i} className="leading-relaxed">
             {parts.map((part, j) =>
-              /^https?:\/\//.test(part) ? (
+              URL_TEST.test(part) ? (
                 <a
                   key={j}
-                  href={part}
+                  href={normalizeHref(part)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#1a7fc7] hover:underline break-all"
