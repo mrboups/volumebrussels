@@ -953,20 +953,22 @@ export async function deleteGiveawayForm(id: string) {
 }
 
 // Public submission: creates the free pass and emails it.
+// Returns error codes (not raw messages) so the client can render
+// localized copy per giveaway language.
 export async function submitGiveawayForm(
   slug: string,
   data: { name: string; email: string }
 ) {
   const form = await db.giveawayForm.findUnique({ where: { slug } });
-  if (!form) return { error: "Form not found" };
-  if (!form.isActive) return { error: "This giveaway is no longer active" };
+  if (!form) return { error: "not_found" };
+  if (!form.isActive) return { error: "inactive" };
 
   const email = data.email.trim().toLowerCase();
   const name = data.name.trim();
 
-  if (!name) return { error: "Name is required" };
+  if (!name) return { error: "missing_name" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { error: "Invalid email address" };
+    return { error: "invalid_email" };
   }
 
   // Find or create the user. If they already have a name, don't overwrite.
@@ -975,6 +977,15 @@ export async function submitGiveawayForm(
     update: { name: { set: name } },
     create: { email, name, role: "customer" },
   });
+
+  // One free pass per user per giveaway. Different giveaways are still fine.
+  const existing = await db.pass.findFirst({
+    where: { userId: user.id, formId: form.id },
+    select: { id: true },
+  });
+  if (existing) {
+    return { error: "already_claimed" };
+  }
 
   const pass = await db.pass.create({
     data: {
@@ -997,12 +1008,8 @@ export async function submitGiveawayForm(
       isGuest: true,
     });
   } catch (err) {
-    return {
-      error:
-        err instanceof Error
-          ? `Pass created but email failed: ${err.message}`
-          : "Pass created but email failed",
-    };
+    console.error("Giveaway email send failed:", err);
+    return { error: "email_failed" };
   }
 
   return { success: true, passId: pass.id };

@@ -15,6 +15,17 @@ const UI = {
     submitting: "Sending...",
     defaultSuccess: "Thanks! Check your inbox — your free pass is on the way.",
     footer: "You will receive your pass by email within a few minutes.",
+    errors: {
+      not_found: "This giveaway does not exist.",
+      inactive: "This giveaway is no longer active.",
+      missing_name: "Please enter your name.",
+      invalid_email: "Please enter a valid email address.",
+      already_claimed:
+        "You have already claimed a free pass from this giveaway.",
+      email_failed:
+        "We could not send your pass by email. Please try again in a moment.",
+      generic: "Something went wrong. Please try again.",
+    },
   },
   fr: {
     nameLabel: "Votre nom",
@@ -26,6 +37,17 @@ const UI = {
     defaultSuccess:
       "Merci ! Vérifiez votre boîte mail — votre pass gratuit arrive.",
     footer: "Vous recevrez votre pass par email dans quelques minutes.",
+    errors: {
+      not_found: "Ce cadeau n'existe pas.",
+      inactive: "Ce cadeau n'est plus actif.",
+      missing_name: "Veuillez entrer votre nom.",
+      invalid_email: "Veuillez entrer une adresse email valide.",
+      already_claimed:
+        "Vous avez déjà réclamé un pass gratuit via ce formulaire.",
+      email_failed:
+        "Nous n'avons pas pu envoyer votre pass par email. Réessayez dans un instant.",
+      generic: "Une erreur est survenue. Veuillez réessayer.",
+    },
   },
   nl: {
     nameLabel: "Je naam",
@@ -37,8 +59,21 @@ const UI = {
     defaultSuccess:
       "Bedankt! Check je inbox — je gratis pas is onderweg.",
     footer: "Je ontvangt je pas per e-mail binnen enkele minuten.",
+    errors: {
+      not_found: "Deze weggeefactie bestaat niet.",
+      inactive: "Deze weggeefactie is niet meer actief.",
+      missing_name: "Voer je naam in.",
+      invalid_email: "Voer een geldig e-mailadres in.",
+      already_claimed:
+        "Je hebt al een gratis pas geclaimd via dit formulier.",
+      email_failed:
+        "We konden je pas niet per e-mail versturen. Probeer het zo opnieuw.",
+      generic: "Er is iets misgegaan. Probeer het opnieuw.",
+    },
   },
 };
+
+type ErrorCode = keyof (typeof UI)["en"]["errors"];
 
 interface LangContent {
   title: string;
@@ -121,7 +156,7 @@ export default function GiveawayClient({ form }: { form: GiveawayData }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Pick the active content; fall back to English if the chosen language is empty.
@@ -135,11 +170,13 @@ export default function GiveawayClient({ form }: { form: GiveawayData }) {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+    setErrorCode(null);
     startTransition(async () => {
       const res = await submitGiveawayForm(form.slug, { name, email });
       if (res?.error) {
-        setError(res.error);
+        // Narrow to known error codes, fall back to generic.
+        const code = res.error as ErrorCode;
+        setErrorCode(ui.errors[code] ? code : "generic");
       } else {
         setSubmitted(true);
       }
@@ -236,9 +273,9 @@ export default function GiveawayClient({ form }: { form: GiveawayData }) {
                 />
               </div>
 
-              {error && (
+              {errorCode && (
                 <div className="bg-red-50 text-red-700 border border-red-200 rounded-md px-3 py-2 text-sm">
-                  {error}
+                  {ui.errors[errorCode]}
                 </div>
               )}
 
