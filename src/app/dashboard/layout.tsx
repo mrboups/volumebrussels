@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
@@ -26,7 +26,33 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Magic link mode: hide full nav, show only current section
+  const magicToken = searchParams.get("token");
+  const isMagicLink = !!magicToken;
+  const isClubMagic = isMagicLink && pathname.startsWith("/dashboard/club");
+  const isResellerMagic = isMagicLink && pathname.startsWith("/dashboard/reseller");
+
+  // If magic link mode: minimal layout, no sidebar
+  if (isMagicLink) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <Link href="/" className="text-xl font-extrabold tracking-tight text-black">
+              VOLUME
+            </Link>
+            <span className="text-sm text-gray-500">
+              {isClubMagic ? "Club Portal" : isResellerMagic ? "Reseller Portal" : "Portal"}
+            </span>
+          </div>
+        </div>
+        <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">{children}</main>
+      </div>
+    );
+  }
 
   const sidebar = (
     <>

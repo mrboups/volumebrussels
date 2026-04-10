@@ -30,11 +30,27 @@ function isProtectedApi(pathname: string, method: string): boolean {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, searchParams } = req.nextUrl;
   const method = req.method;
 
   const needsAuth = isProtectedRoute(pathname) || isProtectedApi(pathname, method);
   if (!needsAuth) {
+    return NextResponse.next();
+  }
+
+  // Magic link tokens — restrict access to only their specific dashboard
+  const urlToken = searchParams.get("token");
+
+  // If there's a magic link token in the URL, only allow on /dashboard/club or /dashboard/reseller
+  if (urlToken) {
+    const allowedPaths = ["/dashboard/club", "/dashboard/reseller"];
+    if (!allowedPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      // Redirect to /dashboard/club with the token
+      const url = new URL("/dashboard/club", req.url);
+      url.searchParams.set("token", urlToken);
+      return NextResponse.redirect(url);
+    }
+    // Allow access to club/reseller dashboard with token (no JWT needed)
     return NextResponse.next();
   }
 
