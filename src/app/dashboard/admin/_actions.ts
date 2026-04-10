@@ -283,10 +283,22 @@ export async function updateEvent(id: string, formData: FormData) {
 }
 
 export async function deleteEvent(id: string) {
-  await db.$transaction(async (tx) => {
-    await tx.pricingPhase.deleteMany({ where: { eventId: id } });
-    await tx.event.delete({ where: { id } });
-  });
+  // Check if event has tickets — never delete an event with tickets
+  const ticketCount = await db.ticket.count({ where: { eventId: id } });
+
+  if (ticketCount > 0) {
+    // Soft delete: mark as inactive + sales ended (keeps ticket history intact)
+    await db.event.update({
+      where: { id },
+      data: { isActive: false, salesEnded: true },
+    });
+  } else {
+    // Hard delete: no tickets, safe to remove event + pricing phases
+    await db.$transaction(async (tx) => {
+      await tx.pricingPhase.deleteMany({ where: { eventId: id } });
+      await tx.event.delete({ where: { id } });
+    });
+  }
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/events");
 }
