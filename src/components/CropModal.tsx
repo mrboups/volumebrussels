@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Cropper, { Area } from "react-easy-crop";
 
 interface CropModalProps {
@@ -9,6 +9,14 @@ interface CropModalProps {
   onCancel: () => void;
   onConfirm: (blob: Blob) => void;
 }
+
+const ASPECT_OPTIONS = [
+  { label: "Free", value: 0 },
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "16:9", value: 16 / 9 },
+  { label: "9:16", value: 9 / 16 },
+];
 
 async function getCroppedBlob(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   const image = new Image();
@@ -44,11 +52,24 @@ async function getCroppedBlob(imageSrc: string, pixelCrop: Area): Promise<Blob> 
   });
 }
 
-export default function CropModal({ image, aspect = 16 / 9, onCancel, onConfirm }: CropModalProps) {
+export default function CropModal({ image, aspect: defaultAspect = 16 / 9, onCancel, onConfirm }: CropModalProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [pixelCrop, setPixelCrop] = useState<Area | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedAspect, setSelectedAspect] = useState<number>(defaultAspect);
+  const [imageNaturalAspect, setImageNaturalAspect] = useState<number>(defaultAspect);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setImageNaturalAspect(img.width / img.height);
+    };
+    img.src = image;
+  }, [image]);
+
+  // When "Free" is selected, use the image's natural aspect so the whole image is selectable
+  const activeAspect = selectedAspect === 0 ? imageNaturalAspect : selectedAspect;
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setPixelCrop(pixels);
@@ -84,7 +105,7 @@ export default function CropModal({ image, aspect = 16 / 9, onCancel, onConfirm 
             image={image}
             crop={crop}
             zoom={zoom}
-            aspect={aspect}
+            aspect={activeAspect}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
@@ -92,6 +113,23 @@ export default function CropModal({ image, aspect = 16 / 9, onCancel, onConfirm 
         </div>
 
         <div className="p-4 border-t border-gray-200 space-y-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-500 uppercase tracking-wide mr-2">Ratio</span>
+            {ASPECT_OPTIONS.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => setSelectedAspect(opt.value)}
+                className={`px-3 py-1 text-xs font-medium rounded border cursor-pointer transition-colors ${
+                  selectedAspect === opt.value
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500 uppercase tracking-wide">Zoom</span>
             <input

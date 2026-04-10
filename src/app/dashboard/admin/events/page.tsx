@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
   const events = await db.event.findMany({
-    orderBy: { date: "desc" },
+    orderBy: { date: "asc" },
     include: {
       club: { select: { name: true } },
       _count: { select: { pricingPhases: true } },
@@ -45,7 +45,16 @@ export default async function EventsPage() {
             {events.map((event) => (
               <tr key={event.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{event.name}</td>
-                <td className="px-4 py-3 text-gray-500 font-mono text-xs">{event.slug}</td>
+                <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                  <a
+                    href={`/tickets/${event.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    /tickets/{event.slug}
+                  </a>
+                </td>
                 <td className="px-4 py-3 text-gray-600">
                   {event.club?.name ?? event.venueName ?? "-"}
                 </td>
