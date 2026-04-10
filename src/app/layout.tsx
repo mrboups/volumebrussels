@@ -9,22 +9,76 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Volume Brussels | One night access pass to all major clubs and parties every friday or saturday",
-  description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+  metadataBase: new URL("https://volumebrussels.com"),
+  title: {
+    default: "Volume Brussels | One night access pass to all major clubs and parties every friday or saturday",
+    template: "%s | Volume Brussels",
+  },
+  description:
+    "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+  keywords: [
+    "Brussels nightlife",
+    "Brussels clubs",
+    "nightclub pass",
+    "Brussels party",
+    "club pass",
+    "Brussels tickets",
+    "Fuse",
+    "C12",
+    "Spirito",
+    "Mirano",
+    "Madame Moustache",
+    "Atomium",
+    "Brussels tourism",
+    "weekend pass",
+  ],
+  authors: [{ name: "Volume Brussels" }],
+  creator: "Volume Brussels",
+  publisher: "PLAY ASBL",
   icons: {
     icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
+  alternates: {
+    canonical: "https://volumebrussels.com/",
   },
   openGraph: {
     title: "Volume Brussels | Nightlife Pass",
-    description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
-    url: "https://www.volumebrussels.com/",
-    siteName: "Volume Tickets",
+    description:
+      "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+    url: "https://volumebrussels.com/",
+    siteName: "Volume Brussels",
     type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/hero.png",
+        width: 1200,
+        height: 630,
+        alt: "Volume Brussels — Brussels Nightlife in One Pass",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Volume Brussels | Nightlife Pass",
-    description: "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+    description:
+      "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+    images: ["/hero.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  other: {
+    "application-name": "Volume Brussels",
+    "apple-mobile-web-app-title": "Volume Brussels",
   },
 };
 
@@ -36,7 +90,35 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
       <head>
-        {/* Crisp Chat */}
+        {/* JSON-LD structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Volume Brussels",
+              url: "https://volumebrussels.com",
+              logo: "https://volumebrussels.com/logo.svg",
+              description:
+                "Volume Brussels is a one night access pass to all major clubs and parties every friday or saturday, as well as typical city attractions.",
+              sameAs: [
+                "https://www.facebook.com/volume.brussels",
+                "https://www.instagram.com/volume.brussels",
+              ],
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: "Rue Nestor de Tière 35",
+                addressLocality: "Brussels",
+                postalCode: "1030",
+                addressCountry: "BE",
+              },
+              email: "volumebrussels@gmail.com",
+            }),
+          }}
+        />
+        {/* Crisp Chat — forced right position via CSS override */}
+        <style dangerouslySetInnerHTML={{ __html: `.crisp-client .cc-1brb6 { right: 20px !important; left: auto !important; }` }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.$crisp=[];window.CRISP_WEBSITE_ID="bc17566d-d0af-44d8-88d2-87b545df24ab";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`,
