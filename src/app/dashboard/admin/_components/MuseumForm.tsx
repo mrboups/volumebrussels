@@ -159,7 +159,7 @@ export default function MuseumForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Museum Picture</label>
-        <ImageUpload name="picture" currentImage={museum?.pictures?.[0] || null} />
+        <ImageUpload name="picture" currentImage={museum?.pictures?.[0] || null} aspect={4 / 3} />
       </div>
 
       <div>

@@ -159,7 +159,7 @@ export default function ArticleForm({
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Cover Image
         </label>
-        <ImageUpload name="coverImage" currentImage={article?.coverImage} />
+        <ImageUpload name="coverImage" currentImage={article?.coverImage} aspect={16 / 9} />
       </div>
 
       <div>

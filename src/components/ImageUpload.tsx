@@ -1,29 +1,43 @@
 "use client";
 
 import { useState, useRef } from "react";
+import CropModal from "./CropModal";
 
 interface ImageUploadProps {
   name: string;
   currentImage?: string | null;
+  aspect?: number;
 }
 
-export default function ImageUpload({ name, currentImage }: ImageUploadProps) {
+export default function ImageUpload({ name, currentImage, aspect = 16 / 9 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const [uploading, setUploading] = useState(false);
   const [url, setUrl] = useState(currentImage || "");
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Preview
-    setPreview(URL.createObjectURL(file));
+    // Open crop modal with file preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCropSrc(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setCropSrc(null);
+    setPreview(URL.createObjectURL(blob));
     setUploading(true);
 
-    // Upload
     const formData = new FormData();
-    formData.append("file", file);
+    const croppedFile = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+    formData.append("file", croppedFile);
 
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -51,7 +65,13 @@ export default function ImageUpload({ name, currentImage }: ImageUploadProps) {
       setPreview(currentImage || null);
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
+  }
+
+  function handleCropCancel() {
+    setCropSrc(null);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   return (
@@ -95,6 +115,15 @@ export default function ImageUpload({ name, currentImage }: ImageUploadProps) {
         >
           Remove image
         </button>
+      )}
+
+      {cropSrc && (
+        <CropModal
+          image={cropSrc}
+          aspect={aspect}
+          onCancel={handleCropCancel}
+          onConfirm={handleCropConfirm}
+        />
       )}
     </div>
   );

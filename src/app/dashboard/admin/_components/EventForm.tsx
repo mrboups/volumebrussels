@@ -130,7 +130,7 @@ export default function EventForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
-        <ImageUpload name="coverImage" currentImage={event?.coverImage} />
+        <ImageUpload name="coverImage" currentImage={event?.coverImage} aspect={1} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

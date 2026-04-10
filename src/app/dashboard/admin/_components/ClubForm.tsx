@@ -99,7 +99,7 @@ export default function ClubForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Club Picture</label>
-        <ImageUpload name="picture" currentImage={club?.pictures?.[0] || null} />
+        <ImageUpload name="picture" currentImage={club?.pictures?.[0] || null} aspect={4 / 3} />
       </div>
 
       <div>
