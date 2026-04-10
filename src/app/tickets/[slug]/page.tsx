@@ -35,13 +35,17 @@ export default async function TicketSlugPage({
   // 2. Fallback: find a club by slug and show all its events
   const club = await db.club.findUnique({ where: { slug } });
   if (club) {
-    const clubEvents = await db.event.findMany({
-      where: { clubId: club.id, isActive: true, date: { gte: getVisibilityCutoff() } },
+    const allClubEvents = await db.event.findMany({
+      where: { clubId: club.id, isActive: true },
       orderBy: { date: "asc" },
       include: { pricingPhases: true },
     });
 
-    return <ClubEventsView club={club} events={clubEvents} />;
+    const cutoff = getVisibilityCutoff();
+    const upcoming = allClubEvents.filter((e) => e.date >= cutoff);
+    const past = allClubEvents.filter((e) => e.date < cutoff).reverse();
+
+    return <ClubEventsView club={club} upcoming={upcoming} past={past} />;
   }
 
   notFound();
@@ -117,15 +121,94 @@ function SingleEventView({ event }: { event: Awaited<ReturnType<typeof db.event.
   );
 }
 
-function ClubEventsView({ club, events }: { club: { name: string; slug: string; address: string; pictures: string[] }; events: (Awaited<ReturnType<typeof db.event.findFirst>> & { pricingPhases: { id: string; name: string; price: number; startDate: Date; endDate: Date }[] })[] }) {
-  const now = new Date();
+type ClubEvent = Awaited<ReturnType<typeof db.event.findFirst>> & {
+  pricingPhases: { id: string; name: string; price: number; startDate: Date; endDate: Date }[];
+};
 
+function ClubEventRow({ event, past = false }: { event: ClubEvent; past?: boolean }) {
+  const now = new Date();
+  const e = event!;
+  const activePhase = e.pricingPhases.find(
+    (p) => new Date(p.startDate) <= now && new Date(p.endDate) >= now
+  );
+
+  return (
+    <div
+      className={`border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all ${
+        past ? "opacity-70 hover:opacity-100" : ""
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row">
+        {e.coverImage && (
+          <div
+            className={`sm:w-48 h-40 sm:h-auto bg-gray-200 flex-shrink-0 ${
+              past ? "grayscale" : ""
+            }`}
+          >
+            <img src={e.coverImage} alt={e.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+        <div className="p-5 flex-1">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
+            {formatDate(e.date)}
+          </p>
+          <h3 className="text-lg font-bold mt-1">{e.name}</h3>
+          {e.description && (
+            <p className="text-gray-500 text-sm mt-2 line-clamp-2">{e.description}</p>
+          )}
+          <div className="mt-4 flex items-center justify-between">
+            {past ? (
+              <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+                Past event
+              </span>
+            ) : e.salesEnded ? (
+              <>
+                {activePhase && (
+                  <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
+                )}
+                <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Sales Ended
+                </span>
+              </>
+            ) : activePhase ? (
+              <>
+                <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
+                <BuyTicketButton eventId={e.id} pricingPhaseId={activePhase.id} />
+              </>
+            ) : (
+              <a
+                href={`/tickets/${e.slug}`}
+                className="text-sm text-[#1a7fc7] font-medium hover:underline"
+              >
+                View details
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClubEventsView({
+  club,
+  upcoming,
+  past,
+}: {
+  club: { name: string; slug: string; address: string; pictures: string[] };
+  upcoming: ClubEvent[];
+  past: ClubEvent[];
+}) {
   return (
     <section className="py-16 lg:py-24 bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="flex items-center gap-4 mb-8">
           {club.pictures?.[0] && (
-            <img src={club.pictures[0]} alt={club.name} className="w-16 h-16 rounded-full object-cover" />
+            <img
+              src={club.pictures[0]}
+              alt={club.name}
+              className="w-16 h-16 rounded-full object-cover"
+            />
           )}
           <div>
             <h1 className="text-3xl font-extrabold">{club.name}</h1>
@@ -135,52 +218,30 @@ function ClubEventsView({ club, events }: { club: { name: string; slug: string; 
 
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Upcoming Events</h2>
 
-        {events.length === 0 ? (
+        {upcoming.length === 0 ? (
           <p className="text-gray-400 text-center py-12">No upcoming events for this club.</p>
         ) : (
           <div className="space-y-6">
-            {events.map((event) => {
-              const activePhase = event!.pricingPhases.find(
-                (p) => new Date(p.startDate) <= now && new Date(p.endDate) >= now
-              );
-              const e = event!;
-              return (
-                <div key={e.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="flex flex-col sm:flex-row">
-                    {e.coverImage && (
-                      <div className="sm:w-48 h-40 sm:h-auto bg-gray-200 flex-shrink-0">
-                        <img src={e.coverImage} alt={e.name} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="p-5 flex-1">
-                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">{formatDate(e.date)}</p>
-                      <h3 className="text-lg font-bold mt-1">{e.name}</h3>
-                      {e.description && <p className="text-gray-500 text-sm mt-2 line-clamp-2">{e.description}</p>}
-                      <div className="mt-4 flex items-center justify-between">
-                        {e.salesEnded ? (
-                          <>
-                            {activePhase && (
-                              <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
-                            )}
-                            <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                              Sales Ended
-                            </span>
-                          </>
-                        ) : activePhase ? (
-                          <>
-                            <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
-                            <BuyTicketButton eventId={e.id} pricingPhaseId={activePhase.id} />
-                          </>
-                        ) : (
-                          <a href={`/tickets/${e.slug}`} className="text-sm text-[#1a7fc7] font-medium hover:underline">View details</a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {upcoming.map((event) => (
+              <ClubEventRow key={event!.id} event={event} />
+            ))}
           </div>
+        )}
+
+        {past.length > 0 && (
+          <>
+            <div className="flex items-center gap-4 mt-16 mb-6">
+              <h2 className="text-lg font-semibold text-gray-500 uppercase tracking-wide">
+                Past Events
+              </h2>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <div className="space-y-6">
+              {past.map((event) => (
+                <ClubEventRow key={event!.id} event={event} past />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </section>
