@@ -21,10 +21,7 @@ export default function PricingCard({
 }: PricingCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
-
-  const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ""));
-  const currencySymbol = price.replace(/[0-9.,\s]/g, "");
+  const quantity = 1;
 
   async function handleBuy() {
     if (loading) return;
@@ -69,32 +66,6 @@ export default function PricingCard({
       <h3 className="text-2xl font-extrabold">{title}</h3>
       <p className="text-gray-500 mt-2 text-sm">{subtitle}</p>
       <p className="text-5xl font-extrabold mt-6">{price}</p>
-
-      {/* Quantity selector */}
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-          className="w-9 h-9 rounded-full border-2 border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:border-black hover:text-black transition-colors disabled:opacity-30 cursor-pointer"
-          disabled={quantity <= 1}
-        >
-          &minus;
-        </button>
-        <span className="text-lg font-semibold w-6 text-center">{quantity}</span>
-        <button
-          type="button"
-          onClick={() => setQuantity((q) => Math.min(10, q + 1))}
-          className="w-9 h-9 rounded-full border-2 border-gray-300 text-gray-600 font-bold text-lg flex items-center justify-center hover:border-black hover:text-black transition-colors disabled:opacity-30 cursor-pointer"
-          disabled={quantity >= 10}
-        >
-          +
-        </button>
-      </div>
-      {quantity > 1 && (
-        <p className="mt-2 text-sm text-gray-500">
-          {currencySymbol}{numericPrice} &times; {quantity} = {currencySymbol}{(numericPrice * quantity).toFixed(0)}
-        </p>
-      )}
 
       <ul className="mt-8 space-y-3 w-full text-left">
         {features.map((feature) => (

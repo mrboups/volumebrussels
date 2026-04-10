@@ -394,15 +394,6 @@ export default async function HomePage() {
               passType="weekend"
             />
           </div>
-
-          <div className="mt-10 text-center">
-            <Link
-              href="/buy-ticket"
-              className="inline-block bg-black text-white text-sm font-semibold uppercase tracking-wide px-10 py-3.5 rounded-full hover:bg-gray-900 transition-colors"
-            >
-              Buy Now
-            </Link>
-          </div>
         </div>
       </section>
 
