@@ -126,6 +126,7 @@ export async function deleteClub(id: string) {
 export async function createMuseum(formData: FormData) {
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
+  const openDays = splitTags(formData.get("openDays") as string || "");
 
   await db.museum.create({
     data: {
@@ -135,6 +136,9 @@ export async function createMuseum(formData: FormData) {
       description: (formData.get("description") as string) || null,
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       payPerVisit: parseFloat(formData.get("payPerVisit") as string) || 8,
+      openDays: openDays as any,
+      openTime: (formData.get("openTime") as string) || null,
+      closeTime: (formData.get("closeTime") as string) || null,
       isActive: formData.get("isActive") === "on",
       pictures: (formData.get("picture") as string) ? [formData.get("picture") as string] : [],
     },
@@ -150,6 +154,7 @@ export async function updateMuseum(id: string, formData: FormData) {
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const picture = formData.get("picture") as string;
+  const openDays = splitTags(formData.get("openDays") as string || "");
 
   await db.museum.update({
     where: { id },
@@ -160,6 +165,9 @@ export async function updateMuseum(id: string, formData: FormData) {
       description: (formData.get("description") as string) || null,
       websiteUrl: (formData.get("websiteUrl") as string) || null,
       payPerVisit: parseFloat(formData.get("payPerVisit") as string) || 8,
+      openDays: openDays as any,
+      openTime: (formData.get("openTime") as string) || null,
+      closeTime: (formData.get("closeTime") as string) || null,
       isActive: formData.get("isActive") === "on",
       ...(picture ? { pictures: [picture] } : { pictures: [] }),
     },
@@ -280,6 +288,17 @@ export async function deleteEvent(id: string) {
   });
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/events");
+}
+
+export async function toggleEventSales(id: string) {
+  const event = await db.event.findUnique({ where: { id } });
+  if (!event) return;
+  await db.event.update({
+    where: { id },
+    data: { salesEnded: !event.salesEnded },
+  });
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath(`/tickets/${event.slug}`);
 }
 
 // --------------- ARTICLES ---------------

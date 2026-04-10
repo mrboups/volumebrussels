@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomBytes } from "crypto";
+
+// Use /data/uploads in production (Railway volume), fallback to public/uploads for local dev
+const UPLOAD_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+  : join(process.cwd(), "public", "uploads");
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +20,7 @@ export async function POST(req: NextRequest) {
     // Validate file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
+      return NextResponse.json({ error: `Invalid file type: ${file.type}` }, { status: 400 });
     }
 
     // Max 5MB
@@ -29,13 +34,32 @@ export async function POST(req: NextRequest) {
     // Generate unique filename
     const ext = file.name.split(".").pop() || "jpg";
     const filename = `${randomBytes(16).toString("hex")}.${ext}`;
-    const path = join(process.cwd(), "public", "uploads", filename);
 
-    await writeFile(path, buffer);
+    // Ensure upload directory exists
+    try {
+      await mkdir(UPLOAD_DIR, { recursive: true });
+    } catch (mkdirErr) {
+      console.error("mkdir error:", mkdirErr);
+    }
+
+    const filepath = join(UPLOAD_DIR, filename);
+    console.log("Writing file to:", filepath);
+
+    try {
+      await writeFile(filepath, buffer);
+    } catch (writeErr) {
+      const msg = writeErr instanceof Error ? writeErr.message : String(writeErr);
+      console.error("writeFile error:", msg, "path:", filepath);
+      return NextResponse.json({
+        error: `Write failed: ${msg}`,
+        path: filepath,
+      }, { status: 500 });
+    }
 
     return NextResponse.json({ url: `/uploads/${filename}` });
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("Upload error:", err);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: `Upload failed: ${msg}` }, { status: 500 });
   }
 }

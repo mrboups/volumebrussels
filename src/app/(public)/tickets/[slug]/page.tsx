@@ -51,6 +51,7 @@ function SingleEventView({ event }: { event: Awaited<ReturnType<typeof db.event.
     (p) => new Date(p.startDate) <= now && new Date(p.endDate) >= now
   );
   const e = event!;
+  const salesEnded = e.salesEnded;
 
   return (
     <section className="py-16 lg:py-24 bg-white">
@@ -80,7 +81,19 @@ function SingleEventView({ event }: { event: Awaited<ReturnType<typeof db.event.
         </div>
 
         <div className="mt-10 border-t pt-8">
-          {activePhase ? (
+          {salesEnded ? (
+            <div className="flex items-center justify-between">
+              {activePhase && (
+                <div>
+                  <p className="text-sm text-gray-400 uppercase tracking-wide font-semibold">{activePhase.name.replace("_", " ")}</p>
+                  <p className="text-3xl font-extrabold mt-1">&euro;{activePhase.price.toFixed(2)}</p>
+                </div>
+              )}
+              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Sales Ended
+              </span>
+            </div>
+          ) : activePhase ? (
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400 uppercase tracking-wide font-semibold">{activePhase.name.replace("_", " ")}</p>
@@ -142,7 +155,16 @@ function ClubEventsView({ club, events }: { club: { name: string; slug: string; 
                       <h3 className="text-lg font-bold mt-1">{e.name}</h3>
                       {e.description && <p className="text-gray-500 text-sm mt-2 line-clamp-2">{e.description}</p>}
                       <div className="mt-4 flex items-center justify-between">
-                        {activePhase ? (
+                        {e.salesEnded ? (
+                          <>
+                            {activePhase && (
+                              <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
+                            )}
+                            <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                              Sales Ended
+                            </span>
+                          </>
+                        ) : activePhase ? (
                           <>
                             <p className="text-xl font-bold">&euro;{activePhase.price.toFixed(2)}</p>
                             <BuyTicketButton eventId={e.id} pricingPhaseId={activePhase.id} />

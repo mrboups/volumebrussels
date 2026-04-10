@@ -5,13 +5,23 @@ import { useState } from "react";
 interface BuyTicketButtonProps {
   eventId: string;
   pricingPhaseId: string;
+  disabled?: boolean;
 }
 
 export default function BuyTicketButton({
   eventId,
   pricingPhaseId,
+  disabled = false,
 }: BuyTicketButtonProps) {
   const [loading, setLoading] = useState(false);
+
+  if (disabled) {
+    return (
+      <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+        Sales Ended
+      </span>
+    );
+  }
 
   async function handleBuy() {
     if (loading) return;

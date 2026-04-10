@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { deleteEvent } from "../_actions";
+import { deleteEvent, toggleEventSales } from "../_actions";
 import DeleteButton from "../_components/DeleteButton";
+import ToggleSalesButton from "../_components/ToggleSalesButton";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,11 @@ export default async function EventsPage() {
                     >
                       Edit
                     </Link>
+                    <ToggleSalesButton
+                      id={event.id}
+                      salesEnded={event.salesEnded}
+                      action={toggleEventSales}
+                    />
                     <DeleteButton action={deleteEvent.bind(null, event.id)} />
                   </div>
                 </td>

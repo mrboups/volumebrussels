@@ -27,15 +27,27 @@ export default function ImageUpload({ name, currentImage }: ImageUploadProps) {
 
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Non-JSON response:", text);
+        alert(`Upload failed (status ${res.status}): ${text.substring(0, 300)}`);
+        setPreview(currentImage || null);
+        setUploading(false);
+        return;
+      }
       if (res.ok && data.url) {
         setUrl(data.url);
       } else {
-        alert(data.error || "Upload failed");
+        console.error("Upload failed response:", data);
+        alert(`Upload failed: ${data.error || "Unknown error"}`);
         setPreview(currentImage || null);
       }
-    } catch {
-      alert("Upload failed");
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert(`Upload error: ${err instanceof Error ? err.message : String(err)}`);
       setPreview(currentImage || null);
     } finally {
       setUploading(false);

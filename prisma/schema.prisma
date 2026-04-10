@@ -106,6 +106,9 @@ model Museum {
   websiteUrl   String?
   payPerVisit  Float    @default(8)
   sortOrder    Int      @default(0)
+  openDays     String[]
+  openTime     String?
+  closeTime    String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -165,6 +168,7 @@ model Event {
   date           DateTime
   isLinkedToPass Boolean  @default(false)
   isActive       Boolean  @default(true)
+  salesEnded     Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

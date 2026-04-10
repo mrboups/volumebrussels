@@ -140,7 +140,11 @@ export default function EventForm({
             name="date"
             type="datetime-local"
             required
-            defaultValue={event ? formatDatetimeLocal(new Date(event.date)) : ""}
+            defaultValue={(() => {
+              const today = new Date();
+              today.setHours(22, 0, 0, 0);
+              return event ? formatDatetimeLocal(new Date(event.date)) : formatDatetimeLocal(today);
+            })()}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
           />
         </div>
