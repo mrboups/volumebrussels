@@ -533,9 +533,6 @@ export async function sendClubReport(clubId: string, quarter: number, year: numb
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 16px;font-size:12px;line-height:1.5;color:#a1a1aa;">
-                Only tickets actually validated at the club are included in the ticket revenue. Unvalidated tickets are not counted.
-              </p>
               <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717a;">
                 Please send your invoice to <strong>volumebrussels@gmail.com</strong>.
               </p>

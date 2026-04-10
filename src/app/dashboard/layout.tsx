@@ -11,6 +11,7 @@ const navItems = [
   { href: "/dashboard/reseller", label: "Reseller" },
   { href: "/dashboard/passes", label: "Passes" },
   { href: "/dashboard/tickets", label: "Tickets" },
+  { href: "/dashboard/users", label: "Users" },
 ];
 
 const adminSubItems = [

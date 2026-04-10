@@ -272,11 +272,6 @@ export default async function ClubDashboardPage({
         ))}
       </div>
 
-      <p className="text-xs text-gray-500">
-        Only tickets actually swiped at the club count toward this revenue.
-        Unvalidated tickets remain with Volume.
-      </p>
-
       {/* Revenue by Club */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Revenue by Club</h2>
