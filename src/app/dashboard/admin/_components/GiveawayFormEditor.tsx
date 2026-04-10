@@ -214,11 +214,16 @@ export default function GiveawayFormEditor({ form, action }: Props) {
               </span>
             </label>
             <textarea
-              rows={3}
+              rows={8}
               value={fields[activeLang].description}
               onChange={(e) => setField(activeLang, "description", e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
+              placeholder="Plain text. Paste a full URL on its own line to embed it as an image, or inline any URL to make it a clickable link."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black font-mono"
             />
+            <p className="mt-1 text-xs text-gray-400">
+              Links become clickable automatically. A line containing only an
+              image URL (.jpg, .png, .webp, .gif, .svg) is rendered as an image.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -46,6 +46,55 @@ interface LangContent {
   successMessage: string;
 }
 
+// Render a text block with:
+// - a standalone image URL line → <img>
+// - inline URLs → clickable <a>
+// - everything else → paragraphs preserving line breaks
+function RichText({ text }: { text: string }) {
+  return (
+    <div className="space-y-3 text-left">
+      {text.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-2" />;
+
+        // Full-line image URL
+        if (/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(trimmed)) {
+          return (
+            <img
+              key={i}
+              src={trimmed}
+              alt=""
+              className="w-full rounded-lg my-2"
+            />
+          );
+        }
+
+        // Linkify inline URLs
+        const parts = trimmed.split(/(https?:\/\/[^\s]+)/g);
+        return (
+          <p key={i} className="leading-relaxed">
+            {parts.map((part, j) =>
+              /^https?:\/\//.test(part) ? (
+                <a
+                  key={j}
+                  href={part}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#1a7fc7] hover:underline break-all"
+                >
+                  {part}
+                </a>
+              ) : (
+                <span key={j}>{part}</span>
+              )
+            )}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 interface GiveawayData {
   slug: string;
   passType: "night" | "weekend";
@@ -116,9 +165,9 @@ export default function GiveawayClient({ form }: { form: GiveawayData }) {
               {content.title}
             </h1>
             {content.description && (
-              <p className="text-gray-500 mt-3 leading-relaxed whitespace-pre-line">
-                {content.description}
-              </p>
+              <div className="text-gray-600 mt-3 text-sm">
+                <RichText text={content.description} />
+              </div>
             )}
           </div>
 
@@ -137,9 +186,11 @@ export default function GiveawayClient({ form }: { form: GiveawayData }) {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              <p className="text-green-700 font-medium leading-relaxed whitespace-pre-line">
-                {content.successMessage || ui.defaultSuccess}
-              </p>
+              <div className="text-green-700 font-medium text-left">
+                <RichText
+                  text={content.successMessage || ui.defaultSuccess}
+                />
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
