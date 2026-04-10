@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { join, normalize } from "path";
 import { randomBytes } from "crypto";
 
-// Use /data/uploads in production (Railway volume), fallback to public/uploads for local dev
-const UPLOAD_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
-  : join(process.cwd(), "public", "uploads");
+// Use volume in production (Railway), fallback to public/uploads for local dev
+function getUploadDir() {
+  const volumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH;
+  if (volumePath) {
+    // Normalize to handle double-slash paths like "//data"
+    return normalize(join(volumePath.replace(/^\/+/, "/"), "uploads"));
+  }
+  return join(process.cwd(), "public", "uploads");
+}
+
+const UPLOAD_DIR = getUploadDir();
 
 export async function POST(req: NextRequest) {
   try {

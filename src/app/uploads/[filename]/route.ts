@@ -1,11 +1,17 @@
 import { NextRequest } from "next/server";
 import { readFile } from "fs/promises";
-import { join } from "path";
+import { join, normalize } from "path";
 import { existsSync } from "fs";
 
-const UPLOAD_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
-  : join(process.cwd(), "public", "uploads");
+function getUploadDir() {
+  const volumePath = process.env.RAILWAY_VOLUME_MOUNT_PATH;
+  if (volumePath) {
+    return normalize(join(volumePath.replace(/^\/+/, "/"), "uploads"));
+  }
+  return join(process.cwd(), "public", "uploads");
+}
+
+const UPLOAD_DIR = getUploadDir();
 
 const MIME_TYPES: Record<string, string> = {
   jpg: "image/jpeg",

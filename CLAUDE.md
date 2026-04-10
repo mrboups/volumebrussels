@@ -344,6 +344,19 @@ volumebrussels/
 
 Every line of code must be real, operational, production-grade. No dummy data, mocks, placeholders, TODO stubs, or fake API responses. If something is not ready, hide it or skip it entirely.
 
+## DB Data Protection — CRITICAL
+
+**The project is now in PRODUCTION. NEVER overwrite, reset, or destroy data in the database.**
+
+- **NEVER run `npx tsx prisma/seed.ts`** — it performs `deleteMany` on all tables
+- **NEVER run destructive SQL/Prisma operations** like `updateMany` without `where`, `deleteMany`, `db push --force-reset`, `migrate reset`
+- **NEVER modify existing rows in bulk** without explicit user confirmation
+- For schema migrations: use `prisma migrate dev --create-only` or `prisma db push --accept-data-loss` ONLY when the user explicitly asks and understands the implication
+- When adding new fields with defaults, that's safe. Dropping columns or changing types is NOT safe
+- If a script needs to update data, ALWAYS use targeted `where` clauses with IDs or specific filters — never affect all rows
+- If you need to seed new data (e.g., add a new article), use `create` or `upsert` with specific unique keys, never delete first
+- When in doubt, ASK the user before touching the DB
+
 ## Documentation Rules -- MANDATORY
 
 Every commit that changes code must update the corresponding docs in `dev/` and `specs/`. Missing or outdated documentation is treated the same as broken code -- it blocks the commit.
