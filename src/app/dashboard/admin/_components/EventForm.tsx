@@ -62,6 +62,12 @@ export default function EventForm({
   const [name, setName] = useState(event?.name ?? "");
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [autoSlug, setAutoSlug] = useState(!event);
+  const [eventDate, setEventDate] = useState(() => {
+    if (event) return formatDatetimeLocal(new Date(event.date));
+    const today = new Date();
+    today.setHours(22, 0, 0, 0);
+    return formatDatetimeLocal(today);
+  });
   const [phases, setPhases] = useState<PricingPhase[]>(
     event?.pricingPhases.map((p) => ({
       name: p.name,
@@ -75,8 +81,29 @@ export default function EventForm({
     if (autoSlug) setSlug(slugify(name));
   }, [name, autoSlug]);
 
+  // Get the default end date = event date at 23:59
+  function getDefaultEndDate(): string {
+    if (!eventDate) return "";
+    // eventDate is "YYYY-MM-DDTHH:mm"
+    const datePart = eventDate.split("T")[0];
+    return `${datePart}T23:59`;
+  }
+
   function addPhase() {
-    setPhases([...phases, { name: "regular", price: 0, startDate: "", endDate: "" }]);
+    const defaultEnd = getDefaultEndDate();
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    setPhases([
+      ...phases,
+      {
+        name: "regular",
+        price: 0,
+        startDate: phases.length === 0 ? nowStr : "",
+        endDate: defaultEnd,
+      },
+    ]);
   }
 
   function removePhase(index: number) {
@@ -88,7 +115,23 @@ export default function EventForm({
   }
 
   function handleSubmit(formData: FormData) {
-    formData.set("pricingPhases", JSON.stringify(phases.map((p) => ({ ...p, price: Number(p.price) }))));
+    // Auto-chain phases: end of phase N = start of phase N+1 (minus 1 second)
+    // Sort phases by startDate first
+    const sorted = [...phases].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const chained = sorted.map((p, i) => {
+      const next = sorted[i + 1];
+      if (next && next.startDate && p.startDate && next.startDate < (p.endDate || "~")) {
+        // Next phase starts before current phase ends → truncate current to next.startDate
+        return { ...p, endDate: next.startDate };
+      }
+      // Last phase (or no overlap) → use default endDate or event date 23:59
+      if (!p.endDate && eventDate) {
+        return { ...p, endDate: getDefaultEndDate() };
+      }
+      return p;
+    });
+
+    formData.set("pricingPhases", JSON.stringify(chained.map((p) => ({ ...p, price: Number(p.price) }))));
     return action(formData);
   }
 
@@ -141,11 +184,12 @@ export default function EventForm({
             name="date"
             type="datetime-local"
             required
-            defaultValue={(() => {
+            value={eventDate || (() => {
               const today = new Date();
               today.setHours(22, 0, 0, 0);
-              return event ? formatDatetimeLocal(new Date(event.date)) : formatDatetimeLocal(today);
+              return formatDatetimeLocal(today);
             })()}
+            onChange={(e) => setEventDate(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black"
           />
         </div>
