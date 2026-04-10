@@ -17,6 +17,8 @@ export default async function AccountingDashboardPage() {
     clubScanCounts,
     museumScanCounts,
     recentScans,
+    ticketTotalRevenueAgg,
+    ticketClubPayoutAgg,
   ] = await Promise.all([
     db.pass.count(),
     db.pass.aggregate({ _sum: { price: true } }),
@@ -47,16 +49,30 @@ export default async function AccountingDashboardPage() {
         },
       },
     }),
+    db.ticket.aggregate({
+      _sum: { pricePaid: true },
+    }),
+    db.ticket.aggregate({
+      where: { validatedAt: { not: null }, event: { clubId: { not: null } } },
+      _sum: { pricePaid: true },
+    }),
   ]);
 
-  const totalRevenue = revenueAgg._sum.price ?? 0;
+  const totalPassRevenue = revenueAgg._sum.price ?? 0;
+  const totalTicketRevenue = ticketTotalRevenueAgg._sum.pricePaid ?? 0;
+  const totalRevenue = totalPassRevenue + totalTicketRevenue;
 
-  // Club payouts
+  // Club payouts from pass scans
   const clubMap = new Map(clubs.map((c) => [c.id, c]));
-  const totalClubPayouts = clubScanCounts.reduce((sum, s) => {
+  const totalClubPassPayouts = clubScanCounts.reduce((sum, s) => {
     const club = clubMap.get(s.clubId!);
     return sum + (club ? s._count.id * club.payPerVisit : 0);
   }, 0);
+
+  // Club payouts from validated tickets (100% of pricePaid goes to club)
+  const totalClubTicketPayouts = ticketClubPayoutAgg._sum.pricePaid ?? 0;
+
+  const totalClubPayouts = totalClubPassPayouts + totalClubTicketPayouts;
 
   // Museum payouts
   const museumMap = new Map(museums.map((m) => [m.id, m]));
@@ -69,6 +85,8 @@ export default async function AccountingDashboardPage() {
 
   const stats = [
     { label: "Total Sales", value: totalSales.toLocaleString() },
+    { label: "Pass Revenue", value: eur.format(totalPassRevenue) },
+    { label: "Ticket Revenue", value: eur.format(totalTicketRevenue) },
     { label: "Total Revenue", value: eur.format(totalRevenue) },
     { label: "Club Payouts", value: eur.format(totalClubPayouts) },
     { label: "Museum Payouts", value: eur.format(totalMuseumPayouts) },

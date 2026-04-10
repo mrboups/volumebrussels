@@ -445,14 +445,31 @@ export async function sendClubReport(clubId: string, quarter: number, year: numb
   const startDate = new Date(year, startMonth, 1);
   const endDate = new Date(year, startMonth + 3, 1);
 
-  const visits = await db.passScan.count({
-    where: {
-      clubId,
-      scannedAt: { gte: startDate, lt: endDate },
-    },
-  });
+  const [visits, ticketCount, ticketRevAgg] = await Promise.all([
+    db.passScan.count({
+      where: {
+        clubId,
+        scannedAt: { gte: startDate, lt: endDate },
+      },
+    }),
+    db.ticket.count({
+      where: {
+        validatedAt: { gte: startDate, lt: endDate, not: null },
+        event: { clubId },
+      },
+    }),
+    db.ticket.aggregate({
+      where: {
+        validatedAt: { gte: startDate, lt: endDate, not: null },
+        event: { clubId },
+      },
+      _sum: { pricePaid: true },
+    }),
+  ]);
 
-  const revenue = visits * club.payPerVisit;
+  const passRevenue = visits * club.payPerVisit;
+  const ticketRevenue = ticketRevAgg._sum.pricePaid ?? 0;
+  const revenue = passRevenue + ticketRevenue;
   const quarterLabels: Record<number, string> = {
     1: "January to March",
     2: "April to June",
@@ -493,17 +510,32 @@ export async function sendClubReport(clubId: string, quarter: number, year: numb
                   <td style="padding:24px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="padding:0 0 12px;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Total Visits</td>
+                        <td style="padding:0 0 12px;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Pass Visits</td>
                         <td style="padding:0 0 12px;font-size:15px;color:#18181b;font-weight:600;text-align:right;">${visits}</td>
                       </tr>
                       <tr>
-                        <td style="padding:12px 0 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Total Revenue Due</td>
-                        <td style="padding:12px 0 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(revenue)}</td>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Pass Revenue</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(passRevenue)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Validated Tickets</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${ticketCount}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Ticket Revenue</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(ticketRevenue)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0 0;font-size:13px;color:#18181b;text-transform:uppercase;letter-spacing:0.5px;border-top:2px solid #18181b;font-weight:700;">Total Revenue Due</td>
+                        <td style="padding:12px 0 0;font-size:16px;color:#18181b;font-weight:800;text-align:right;border-top:2px solid #18181b;">${eurFmt.format(revenue)}</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
               </table>
+              <p style="margin:0 0 16px;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                Only tickets actually validated at the club are included in the ticket revenue. Unvalidated tickets are not counted.
+              </p>
               <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717a;">
                 Please send your invoice to <strong>volumebrussels@gmail.com</strong>.
               </p>
