@@ -795,3 +795,186 @@ export async function createGuestPass(formData: FormData) {
   revalidatePath("/dashboard/admin");
   return { success: true, passId: pass.id };
 }
+
+// --------------- GIVEAWAY FORMS ---------------
+
+async function uniqueFormSlug(base: string, excludeId?: string): Promise<string> {
+  let slug = base;
+  let counter = 0;
+  while (true) {
+    const existing = await db.giveawayForm.findUnique({ where: { slug } });
+    if (!existing || existing.id === excludeId) return slug;
+    counter++;
+    slug = `${base}-${counter}`;
+  }
+}
+
+function formDataToGiveawayInput(formData: FormData) {
+  const slugRaw = ((formData.get("slug") as string) || "").trim();
+  const passType = formData.get("passType") as "night" | "weekend";
+  const isActive = formData.get("isActive") === "on";
+
+  return {
+    slugRaw,
+    passType,
+    isActive,
+    titleEn: ((formData.get("titleEn") as string) || "").trim(),
+    descriptionEn: ((formData.get("descriptionEn") as string) || "").trim() || null,
+    successMessageEn:
+      ((formData.get("successMessageEn") as string) || "").trim() || null,
+    titleFr: ((formData.get("titleFr") as string) || "").trim() || null,
+    descriptionFr: ((formData.get("descriptionFr") as string) || "").trim() || null,
+    successMessageFr:
+      ((formData.get("successMessageFr") as string) || "").trim() || null,
+    titleNl: ((formData.get("titleNl") as string) || "").trim() || null,
+    descriptionNl: ((formData.get("descriptionNl") as string) || "").trim() || null,
+    successMessageNl:
+      ((formData.get("successMessageNl") as string) || "").trim() || null,
+  };
+}
+
+export async function createGiveawayForm(formData: FormData) {
+  const input = formDataToGiveawayInput(formData);
+
+  if (!input.titleEn) {
+    throw new Error("English title is required");
+  }
+  if (input.passType !== "night" && input.passType !== "weekend") {
+    throw new Error("Pass type is required");
+  }
+
+  const base = slugify(input.slugRaw || input.titleEn);
+  const slug = await uniqueFormSlug(base);
+
+  await db.giveawayForm.create({
+    data: {
+      slug,
+      passType: input.passType,
+      isActive: input.isActive,
+      titleEn: input.titleEn,
+      descriptionEn: input.descriptionEn,
+      successMessageEn: input.successMessageEn,
+      titleFr: input.titleFr,
+      descriptionFr: input.descriptionFr,
+      successMessageFr: input.successMessageFr,
+      titleNl: input.titleNl,
+      descriptionNl: input.descriptionNl,
+      successMessageNl: input.successMessageNl,
+    },
+  });
+
+  revalidatePath("/dashboard/admin/giveaways");
+  revalidatePath("/dashboard/admin");
+  redirect("/dashboard/admin/giveaways");
+}
+
+export async function updateGiveawayForm(id: string, formData: FormData) {
+  const input = formDataToGiveawayInput(formData);
+
+  if (!input.titleEn) {
+    throw new Error("English title is required");
+  }
+
+  const base = slugify(input.slugRaw || input.titleEn);
+  const slug = await uniqueFormSlug(base, id);
+
+  await db.giveawayForm.update({
+    where: { id },
+    data: {
+      slug,
+      passType: input.passType,
+      isActive: input.isActive,
+      titleEn: input.titleEn,
+      descriptionEn: input.descriptionEn,
+      successMessageEn: input.successMessageEn,
+      titleFr: input.titleFr,
+      descriptionFr: input.descriptionFr,
+      successMessageFr: input.successMessageFr,
+      titleNl: input.titleNl,
+      descriptionNl: input.descriptionNl,
+      successMessageNl: input.successMessageNl,
+    },
+  });
+
+  revalidatePath("/dashboard/admin/giveaways");
+  revalidatePath(`/giveaway/${slug}`);
+  redirect("/dashboard/admin/giveaways");
+}
+
+export async function toggleGiveawayForm(id: string) {
+  const form = await db.giveawayForm.findUnique({ where: { id } });
+  if (!form) return { error: "Form not found" };
+  await db.giveawayForm.update({
+    where: { id },
+    data: { isActive: !form.isActive },
+  });
+  revalidatePath("/dashboard/admin/giveaways");
+  revalidatePath(`/giveaway/${form.slug}`);
+  return { success: true };
+}
+
+export async function deleteGiveawayForm(id: string) {
+  // Detach passes that reference this form so the history survives.
+  await db.pass.updateMany({
+    where: { formId: id },
+    data: { formId: null },
+  });
+  await db.giveawayForm.delete({ where: { id } });
+  revalidatePath("/dashboard/admin/giveaways");
+}
+
+// Public submission: creates the free pass and emails it.
+export async function submitGiveawayForm(
+  slug: string,
+  data: { name: string; email: string }
+) {
+  const form = await db.giveawayForm.findUnique({ where: { slug } });
+  if (!form) return { error: "Form not found" };
+  if (!form.isActive) return { error: "This giveaway is no longer active" };
+
+  const email = data.email.trim().toLowerCase();
+  const name = data.name.trim();
+
+  if (!name) return { error: "Name is required" };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Invalid email address" };
+  }
+
+  // Find or create the user. If they already have a name, don't overwrite.
+  const user = await db.user.upsert({
+    where: { email },
+    update: { name: { set: name } },
+    create: { email, name, role: "customer" },
+  });
+
+  const pass = await db.pass.create({
+    data: {
+      type: form.passType,
+      price: 0,
+      userId: user.id,
+      status: "purchased",
+      formId: form.id,
+      stripePaymentId: `giveaway_${form.slug}_${Date.now()}`,
+    },
+  });
+
+  try {
+    const { sendPassEmail } = await import("@/lib/email");
+    await sendPassEmail({
+      to: email,
+      passId: pass.id,
+      passType: form.passType as "night" | "weekend",
+      customerName: name,
+      isGuest: true,
+    });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? `Pass created but email failed: ${err.message}`
+          : "Pass created but email failed",
+    };
+  }
+
+  return { success: true, passId: pass.id };
+}

@@ -16,6 +16,7 @@ const adminSubItems = [
   { href: "/dashboard/admin/museums", label: "Museums" },
   { href: "/dashboard/admin/events", label: "Events" },
   { href: "/dashboard/admin/articles", label: "Articles" },
+  { href: "/dashboard/admin/giveaways", label: "Giveaways" },
   { href: "/dashboard/admin/resellers", label: "Resellers" },
   { href: "/dashboard/admin/reports", label: "Reports" },
 ];

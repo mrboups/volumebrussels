@@ -25,6 +25,7 @@ export default async function AdminDashboardPage() {
     eventCount,
     articleCount,
     resellerCount,
+    giveawayCount,
     recentPasses,
     recentScans,
     recentTickets,
@@ -38,6 +39,7 @@ export default async function AdminDashboardPage() {
     db.event.count(),
     db.article.count(),
     db.reseller.count(),
+    db.giveawayForm.count(),
     db.pass.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -106,6 +108,7 @@ export default async function AdminDashboardPage() {
     { href: "/dashboard/admin/museums", label: "Manage Museums", count: museumCount },
     { href: "/dashboard/admin/events", label: "Manage Events", count: eventCount },
     { href: "/dashboard/admin/articles", label: "Manage Articles", count: articleCount },
+    { href: "/dashboard/admin/giveaways", label: "Manage Giveaways", count: giveawayCount },
     { href: "/dashboard/admin/resellers", label: "Manage Resellers", count: resellerCount },
   ];
 

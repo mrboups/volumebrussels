@@ -126,15 +126,18 @@ model Pass {
   activatedAt      DateTime?
   expiresAt        DateTime?
   resellerId       String?
+  formId           String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
-  reseller Reseller? @relation(fields: [resellerId], references: [id])
+  user     User          @relation(fields: [userId], references: [id])
+  reseller Reseller?     @relation(fields: [resellerId], references: [id])
+  form     GiveawayForm? @relation(fields: [formId], references: [id])
   scans    PassScan[]
 
   @@index([userId])
   @@index([resellerId])
+  @@index([formId])
   @@index([status])
 }
 
@@ -228,6 +231,33 @@ model Reseller {
   user    User     @relation(fields: [userId], references: [id])
   passes  Pass[]
   tickets Ticket[]
+}
+
+model GiveawayForm {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  passType    PassType
+  isActive    Boolean  @default(true)
+
+  // Language: English (primary)
+  titleEn     String
+  descriptionEn String? @db.Text
+  successMessageEn String? @db.Text
+
+  // Language: French
+  titleFr     String?
+  descriptionFr String? @db.Text
+  successMessageFr String? @db.Text
+
+  // Language: Dutch
+  titleNl     String?
+  descriptionNl String? @db.Text
+  successMessageNl String? @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  passes Pass[]
 }
 
 model Article {
