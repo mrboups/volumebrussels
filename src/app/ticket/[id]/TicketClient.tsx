@@ -113,12 +113,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
         <div className="px-4 mb-4 flex flex-col gap-3">
           <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3">
             <p className="text-yellow-400 text-xs font-bold uppercase tracking-wide text-center">
-              This is a new type of ticket without QR Code, show it at the entrance to enter the venue.
-            </p>
-          </div>
-          <div className="bg-red-900/30 border border-red-700/50 px-4 py-3">
-            <p className="text-red-400 text-xs font-bold uppercase tracking-wide text-center">
-              Do not click on ticket by yourself or you will lose access to the event.
+              This is a ticket without QR Code, show it at the entrance to enter the venue.
             </p>
           </div>
         </div>
@@ -189,11 +184,18 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
               )}
             </div>
           ) : (
-            <SwipeSlider
-              onComplete={handleValidate}
-              label="Swipe to validate"
-              completedLabel="Validated"
-            />
+            <>
+              <SwipeSlider
+                onComplete={handleValidate}
+                label="Swipe to validate"
+                completedLabel="Validated"
+              />
+              <div className="mt-4 bg-red-900/30 border border-red-700/50 px-4 py-3">
+                <p className="text-red-400 text-xs font-bold uppercase tracking-wide text-center">
+                  Do not click on ticket by yourself or you will lose access to the event.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -66,7 +66,7 @@ export default async function OfferPage() {
               {museums.map((museum) => (
                 <div
                   key={museum.id}
-                  className="bg-white border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
+                  className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
                 >
                   {museum.pictures?.[0] ? (
                     <div className="w-full h-72 bg-gray-200 overflow-hidden relative">
