@@ -20,7 +20,7 @@ export default function BuyTicketPage() {
               features={[
                 "Skip Line Access to 2 Clubs",
                 "Free Access to Atomium & Brussels Design Museum",
-                "Free Access to 5 Brussels Museums",
+                "Free Access to 4 Brussels Museums",
               ]}
               filled={false}
               passType="night"
@@ -32,7 +32,7 @@ export default function BuyTicketPage() {
               features={[
                 "Free Unlimited Access to all clubs",
                 "Free Access to Atomium & Brussels Design Museum",
-                "Free Access to 5 Brussels Museums",
+                "Free Access to 4 Brussels Museums",
               ]}
               filled={true}
               passType="weekend"

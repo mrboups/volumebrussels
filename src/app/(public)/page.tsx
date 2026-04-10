@@ -117,7 +117,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-6 text-lg leading-relaxed opacity-90">
               Enjoy 24&nbsp;h or 48&nbsp;h access to 9 nightclubs, the iconic
-              Atomium, Brussels Design Museum, and 5 more museums.
+              Atomium, Brussels Design Museum, and 4 more museums.
             </p>
             <ul className="mt-6 space-y-2">
               {bulletPoints.map((point) => (
@@ -319,7 +319,7 @@ export default async function HomePage() {
               <div className="w-full h-64 relative overflow-hidden">
                 <img
                   src="/city/museums.png"
-                  alt="5 Brussels Museums"
+                  alt="4 Brussels Museums"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
@@ -329,9 +329,9 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-semibold">5 Brussels Museums</h3>
+                <h3 className="text-lg font-semibold">4 Brussels Museums</h3>
                 <p className="mt-1 text-gray-500 text-sm leading-relaxed">
-                  Discover 5 museums showcasing the city&apos;s rich history and
+                  Discover 4 museums showcasing the city&apos;s rich history and
                   contemporary art scene.
                 </p>
               </div>
@@ -376,7 +376,7 @@ export default async function HomePage() {
               features={[
                 "Skip Line Access to 2 Clubs",
                 "Free Access to Atomium & Brussels Design Museum",
-                "Free Access to 5 Brussels Museums",
+                "Free Access to 4 Brussels Museums",
               ]}
               filled={false}
               passType="night"
@@ -388,7 +388,7 @@ export default async function HomePage() {
               features={[
                 "Free Unlimited Access to all clubs",
                 "Free Access to Atomium & Brussels Design Museum",
-                "Free Access to 5 Brussels Museums",
+                "Free Access to 4 Brussels Museums",
               ]}
               filled={true}
               passType="weekend"
