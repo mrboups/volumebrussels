@@ -117,10 +117,10 @@ export default function RootLayout({
             }),
           }}
         />
-        {/* Crisp Chat — force right-side position via reverse flag */}
+        {/* Crisp Chat — position is configured in the Crisp dashboard */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.$crisp=[["config","position:reverse",[true]]];window.CRISP_WEBSITE_ID="bc17566d-d0af-44d8-88d2-87b545df24ab";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`,
+            __html: `window.$crisp=[];window.CRISP_WEBSITE_ID="bc17566d-d0af-44d8-88d2-87b545df24ab";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`,
           }}
         />
         {/* Facebook Pixel */}

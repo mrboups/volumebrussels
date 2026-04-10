@@ -202,8 +202,8 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
             <>
               <SwipeSlider
                 onComplete={handleValidate}
-                label="Swipe to validate"
-                completedLabel="Validated"
+                label="Swipe to check in"
+                completedLabel="Checked in"
               />
               <div className="mt-4 bg-red-900/30 border border-red-700/50 px-4 py-3">
                 <p className="text-red-400 text-xs font-bold uppercase tracking-wide text-center">
