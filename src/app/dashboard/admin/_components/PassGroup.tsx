@@ -36,6 +36,45 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Read the pass source (guest / giveaway) from the stripePaymentId marker.
+// Paid passes use Stripe IDs (pi_…) and fall through to null.
+function getPassSource(
+  stripePaymentId: string | null
+): { kind: "guest" } | { kind: "giveaway"; slug: string } | null {
+  if (!stripePaymentId) return null;
+  if (stripePaymentId.startsWith("guest_")) return { kind: "guest" };
+  const m = stripePaymentId.match(/^giveaway_(.+)_\d+$/);
+  if (m) return { kind: "giveaway", slug: m[1] };
+  return null;
+}
+
+function SourceBadge({
+  stripePaymentId,
+  compact = false,
+}: {
+  stripePaymentId: string | null;
+  compact?: boolean;
+}) {
+  const source = getPassSource(stripePaymentId);
+  if (!source) return null;
+  const base = `inline-block px-2 py-0.5 text-xs font-medium rounded ${
+    compact ? "opacity-75" : ""
+  }`;
+  if (source.kind === "guest") {
+    return (
+      <span className={`${base} bg-amber-50 text-amber-700`}>guest</span>
+    );
+  }
+  return (
+    <span
+      className={`${base} bg-pink-50 text-pink-700 max-w-[180px] truncate`}
+      title={`giveaway: ${source.slug}`}
+    >
+      giveaway: {source.slug}
+    </span>
+  );
+}
+
 export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -47,9 +86,12 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
           {new Date(pass.createdAt).toLocaleDateString("fr-BE")}
         </td>
         <td className="px-4 py-3">
-          <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded">
-            {pass.type}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded">
+              {pass.type}
+            </span>
+            <SourceBadge stripePaymentId={pass.stripePaymentId} />
+          </div>
         </td>
         <td className="px-4 py-3 text-gray-600">{eur.format(pass.price)}</td>
         <td className="px-4 py-3">
@@ -98,9 +140,12 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
           </span>
         </td>
         <td className="px-4 py-3">
-          <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded">
-            {first.type}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded">
+              {first.type}
+            </span>
+            <SourceBadge stripePaymentId={first.stripePaymentId} />
+          </div>
         </td>
         <td className="px-4 py-3 text-gray-600">
           {eur.format(totalPrice)}
@@ -139,9 +184,12 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
               {new Date(pass.createdAt).toLocaleDateString("fr-BE")}
             </td>
             <td className="px-4 py-2">
-              <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50/60 text-purple-600 rounded">
-                {pass.type}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-50/60 text-purple-600 rounded">
+                  {pass.type}
+                </span>
+                <SourceBadge stripePaymentId={pass.stripePaymentId} compact />
+              </div>
             </td>
             <td className="px-4 py-2 text-gray-400 text-xs">
               {eur.format(pass.price)}
