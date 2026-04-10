@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import PassGroup from "./_components/PassGroup";
 import TicketActions from "./_components/TicketActions";
+import GuestPassButton from "./_components/GuestPassButton";
 import { formatBrusselsDate } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
@@ -143,7 +144,10 @@ export default async function AdminDashboardPage() {
 
       {/* Recent Passes */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Recent Passes</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">Recent Passes</h2>
+          <GuestPassButton />
+        </div>
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

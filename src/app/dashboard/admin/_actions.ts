@@ -741,3 +741,57 @@ export async function updateTicketEmail(ticketId: string, newEmail: string) {
     return { error: err instanceof Error ? err.message : "Failed to send" };
   }
 }
+
+// --------------- GUEST PASS ---------------
+
+export async function createGuestPass(formData: FormData) {
+  const rawEmail = (formData.get("email") as string | null)?.trim().toLowerCase();
+  const type = formData.get("type") as "night" | "weekend" | null;
+
+  if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+    return { error: "Invalid email address" };
+  }
+  if (type !== "night" && type !== "weekend") {
+    return { error: "Invalid pass type" };
+  }
+
+  // Find or create the user by email
+  const user = await db.user.upsert({
+    where: { email: rawEmail },
+    update: {},
+    create: { email: rawEmail, role: "customer" },
+  });
+
+  // Create the free pass. Marked with a stripePaymentId prefix so we can
+  // distinguish guest/invitation passes from paid ones.
+  const pass = await db.pass.create({
+    data: {
+      type,
+      price: 0,
+      userId: user.id,
+      status: "purchased",
+      stripePaymentId: `guest_${Date.now()}`,
+    },
+  });
+
+  try {
+    const { sendPassEmail } = await import("@/lib/email");
+    await sendPassEmail({
+      to: rawEmail,
+      passId: pass.id,
+      passType: type,
+      customerName: user.name || undefined,
+      isGuest: true,
+    });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? `Pass created but email failed: ${err.message}`
+          : "Pass created but email failed",
+    };
+  }
+
+  revalidatePath("/dashboard/admin");
+  return { success: true, passId: pass.id };
+}

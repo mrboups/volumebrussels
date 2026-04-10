@@ -20,6 +20,7 @@ interface SendPassEmailParams {
   passId: string;
   passType: "night" | "weekend";
   customerName?: string;
+  isGuest?: boolean;
 }
 
 export async function sendPassEmail({
@@ -27,6 +28,7 @@ export async function sendPassEmail({
   passId,
   passType,
   customerName,
+  isGuest = false,
 }: SendPassEmailParams) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const passUrl = `${appUrl}/pass/${passId}`;
@@ -35,6 +37,12 @@ export async function sendPassEmail({
   const duration = isNight ? "24 hours" : "48 hours";
   const clubAccess = isNight ? "2 clubs" : "all clubs (unlimited)";
   const greeting = customerName ? `Hi ${customerName},` : "Hi there,";
+  const introLine = isGuest
+    ? `You have been invited to enjoy a <strong>free ${passLabel}</strong> from Volume Brussels. Here are the details:`
+    : `Your <strong>${passLabel}</strong> is confirmed and ready to use. Here are the details:`;
+  const subject = isGuest
+    ? `You're invited — a free Volume Brussels ${passLabel}`
+    : "Your Volume Brussels Pass is ready!";
 
   const html = `
 <!DOCTYPE html>
@@ -63,7 +71,7 @@ export async function sendPassEmail({
                 ${greeting}
               </p>
               <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#18181b;">
-                Your <strong>${passLabel}</strong> is confirmed and ready to use. Here are the details:
+                ${introLine}
               </p>
 
               <!-- Pass Details Box -->
@@ -142,7 +150,7 @@ export async function sendPassEmail({
   const result = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: "Your Volume Brussels Pass is ready!",
+    subject,
     html,
   });
 
