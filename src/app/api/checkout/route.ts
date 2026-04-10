@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 
-// Stripe Price IDs (TEST: 0.50 EUR — create new prices at 29/48 EUR for production)
+// Stripe Price IDs — production (Night Pass €29, Weekend Pass €48)
 const PASS_STRIPE_PRICES: Record<string, string> = {
-  night: "price_1TJNTOHKSMaEcP9CbjAE7NIi",
-  weekend: "price_1TJNTOHKSMaEcP9CEbGlmYtK",
+  night: "price_1TKjllHKSMaEcP9CWKKbGyj3",
+  weekend: "price_1TKjllHKSMaEcP9CqWNnAW5Y",
 };
 
 export async function POST(req: NextRequest) {
