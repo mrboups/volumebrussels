@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
+import { getVisibilityCutoff } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,11 @@ function formatDate(date: Date): string {
 }
 
 export default async function TicketsIndexPage() {
+  // Events are visible until 02:00 Brussels the day AFTER their date.
+  // Equivalently: cutoff = "now minus 2 hours", computed as Brussels calendar day start.
+  const cutoff = getVisibilityCutoff();
   const events = await db.event.findMany({
-    where: { isActive: true, date: { gte: new Date() } },
+    where: { isActive: true, date: { gte: cutoff } },
     orderBy: { date: "asc" },
     include: { pricingPhases: true, club: true },
   });

@@ -53,3 +53,15 @@ export function brusselsToUtc(date: Date): Date {
 export function utcToBrussels(date: Date): Date {
   return toZonedTime(date, BRUSSELS_TZ);
 }
+
+/**
+ * Get the cutoff date for "visible events":
+ * An event on day D is visible until 02:00 Brussels on day D+1.
+ * Returns a Date that can be used as `where: { date: { gte: cutoff } }`.
+ */
+export function getVisibilityCutoff(): Date {
+  // Shift now by -2h, then snap to start of that Brussels day
+  const shifted = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const dayStr = formatInTimeZone(shifted, BRUSSELS_TZ, "yyyy-MM-dd");
+  return fromZonedTime(`${dayStr}T00:00:00`, BRUSSELS_TZ);
+}

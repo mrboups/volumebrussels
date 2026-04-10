@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import BuyTicketButton from "./BuyTicketButton";
+import { getVisibilityCutoff } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function TicketSlugPage({
   const club = await db.club.findUnique({ where: { slug } });
   if (club) {
     const clubEvents = await db.event.findMany({
-      where: { clubId: club.id, isActive: true, date: { gte: new Date() } },
+      where: { clubId: club.id, isActive: true, date: { gte: getVisibilityCutoff() } },
       orderBy: { date: "asc" },
       include: { pricingPhases: true },
     });
