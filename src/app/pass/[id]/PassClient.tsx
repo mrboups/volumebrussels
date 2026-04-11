@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import SwipeSlider from "@/components/SwipeSlider";
-import { scannerHeaders } from "@/lib/scanner";
 
 interface Club {
   id: string;
@@ -190,7 +189,7 @@ export default function PassClient({
       setError(null);
       const res = await fetch("/api/scan", {
         method: "POST",
-        headers: scannerHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passId: pass.id, clubId }),
       });
 
@@ -228,7 +227,7 @@ export default function PassClient({
       setError(null);
       const res = await fetch("/api/scan", {
         method: "POST",
-        headers: scannerHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passId: pass.id, museumId }),
       });
 

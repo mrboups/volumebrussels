@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import SwipeSlider from "@/components/SwipeSlider";
-import { scannerHeaders } from "@/lib/scanner";
 
 interface Club {
   id: string;
@@ -95,7 +94,7 @@ export default function TicketClient({ ticket: initialTicket }: TicketClientProp
     setError(null);
     const res = await fetch("/api/tickets/validate", {
       method: "POST",
-      headers: scannerHeaders({ "Content-Type": "application/json" }),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticketId: ticket.id }),
     });
 
