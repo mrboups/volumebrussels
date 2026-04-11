@@ -4,6 +4,7 @@ import PassGroup from "./_components/PassGroup";
 import TicketActions from "./_components/TicketActions";
 import GuestPassButton from "./_components/GuestPassButton";
 import TestPassButton from "./_components/TestPassButton";
+import UndoScanButton from "./_components/UndoScanButton";
 import { formatBrusselsDate } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
@@ -245,6 +246,7 @@ export default async function AdminDashboardPage() {
                         <TicketActions
                           ticketId={ticket.id}
                           currentEmail={ticket.user.email}
+                          isValidated={ticket.validatedAt !== null}
                         />
                       </div>
                     </td>
@@ -272,7 +274,9 @@ export default async function AdminDashboardPage() {
               <tr className="border-b border-gray-100 text-left text-gray-500">
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Venue</th>
+                <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Pass ID</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -284,14 +288,20 @@ export default async function AdminDashboardPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {scan.club?.name ?? scan.museum?.name ?? "Unknown"}
                   </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs uppercase tracking-wide">
+                    {scan.clubId ? "club" : scan.museumId ? "museum" : "—"}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">
                     {truncateId(scan.passId)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <UndoScanButton scanId={scan.id} />
                   </td>
                 </tr>
               ))}
               {recentScans.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
                     No scans found.
                   </td>
                 </tr>

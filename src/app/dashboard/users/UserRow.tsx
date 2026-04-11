@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { undoTicketValidation } from "../admin/_actions";
 
 const eur = new Intl.NumberFormat("fr-BE", {
   style: "currency",
@@ -87,6 +88,54 @@ function StatusBadge({ status }: { status: string }) {
 
 function formatDateShort(iso: string) {
   return new Date(iso).toLocaleDateString("fr-BE");
+}
+
+function InlineUndoTicket({ ticketId }: { ticketId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function onClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await undoTicketValidation(ticketId);
+      if (res?.error) {
+        setError(res.error);
+        setConfirming(false);
+      }
+    });
+  }
+
+  if (error) return <span className="text-red-600" title={error}>err</span>;
+
+  if (confirming) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={pending}
+        className="text-red-700 font-semibold hover:text-red-900 disabled:opacity-50"
+      >
+        {pending ? "…" : "Confirm"}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-red-600 font-medium hover:text-red-800"
+      title="Undo check-in"
+    >
+      Undo
+    </button>
+  );
 }
 
 export default function UserRow({ user }: { user: SerializedUser }) {
@@ -284,14 +333,19 @@ export default function UserRow({ user }: { user: SerializedUser }) {
                               )}
                             </td>
                             <td className="px-3 py-2">
-                              <Link
-                                href={`/ticket/${t.id}`}
-                                target="_blank"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-blue-600 hover:text-blue-800 font-medium"
-                              >
-                                View
-                              </Link>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/ticket/${t.id}`}
+                                  target="_blank"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  View
+                                </Link>
+                                {t.validatedAt && (
+                                  <InlineUndoTicket ticketId={t.id} />
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}

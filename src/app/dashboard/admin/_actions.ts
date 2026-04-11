@@ -795,6 +795,102 @@ export async function updateTicketEmail(ticketId: string, newEmail: string) {
   }
 }
 
+// --------------- UNDO CHECK-INS ---------------
+
+/**
+ * Undo a pass scan at a club or museum.
+ *
+ * - Refuses if the pass is refunded.
+ * - Deletes the scan row.
+ * - If the undone scan was a CLUB scan and no other club scans remain on
+ *   the pass, reverts the activation: clears `activatedAt` / `expiresAt`
+ *   and sets status back to `purchased`. That way a night pass whose
+ *   only scan is undone is genuinely fresh again, and its 2-club limit
+ *   is based on remaining scans.
+ * - Museum scans never activate a pass, so a museum-scan undo is a
+ *   straight delete.
+ */
+export async function undoPassScan(scanId: string) {
+  await requireAdmin();
+
+  const scan = await db.passScan.findUnique({
+    where: { id: scanId },
+    include: { pass: true },
+  });
+  if (!scan) return { error: "Scan not found" };
+  if (scan.pass.status === "refunded") {
+    return { error: "Pass is refunded — undo not allowed" };
+  }
+
+  const wasClubScan = scan.clubId !== null;
+
+  await db.$transaction(async (tx) => {
+    await tx.passScan.delete({ where: { id: scanId } });
+
+    if (wasClubScan) {
+      const remainingClubScans = await tx.passScan.count({
+        where: { passId: scan.passId, clubId: { not: null } },
+      });
+      if (remainingClubScans === 0) {
+        // No more club scans → pass is effectively unused, revert activation.
+        await tx.pass.update({
+          where: { id: scan.passId },
+          data: {
+            activatedAt: null,
+            expiresAt: null,
+            status: "purchased",
+          },
+        });
+      }
+    }
+  });
+
+  console.log(
+    `[audit] undoPassScan scanId=${scanId} passId=${scan.passId} clubId=${scan.clubId} museumId=${scan.museumId} scannedAt=${scan.scannedAt.toISOString()}`
+  );
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/passes");
+  revalidatePath("/dashboard/users");
+  revalidatePath(`/pass/${scan.passId}`);
+  return { success: true };
+}
+
+/**
+ * Undo a ticket validation — clears `validatedAt` and moves the ticket
+ * back from `used` to `purchased`. Refunded tickets can't be undone.
+ */
+export async function undoTicketValidation(ticketId: string) {
+  await requireAdmin();
+
+  const ticket = await db.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) return { error: "Ticket not found" };
+  if (ticket.status === "refunded") {
+    return { error: "Ticket is refunded — undo not allowed" };
+  }
+  if (ticket.validatedAt === null && ticket.status !== "used") {
+    return { error: "Ticket is not validated" };
+  }
+
+  await db.ticket.update({
+    where: { id: ticketId },
+    data: {
+      validatedAt: null,
+      status: "purchased",
+    },
+  });
+
+  console.log(
+    `[audit] undoTicketValidation ticketId=${ticketId} previousValidatedAt=${ticket.validatedAt?.toISOString() ?? "null"}`
+  );
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/tickets");
+  revalidatePath("/dashboard/users");
+  revalidatePath(`/ticket/${ticketId}`);
+  return { success: true };
+}
+
 // --------------- GUEST PASS ---------------
 
 export async function createGuestPass(formData: FormData) {

@@ -138,6 +138,7 @@ export default async function TicketsDashboardPage({
                       <TicketActions
                         ticketId={ticket.id}
                         currentEmail={ticket.user.email}
+                        isValidated={ticket.validatedAt !== null}
                       />
                     </div>
                   </td>
