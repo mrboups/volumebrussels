@@ -92,6 +92,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Every date rendered on the customer pass view MUST be in Brussels
+// time, not the device's local zone. Without timeZone: "Europe/Brussels"
+// a phone in the US shows the activation and expiry timestamps shifted
+// by the local offset and the displayed hours look wrong to staff at
+// the door ("Valid until Sunday 20:00" instead of "Monday 02:00").
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleString("en-GB", {
@@ -99,6 +104,7 @@ function formatTime(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Europe/Brussels",
   });
 }
 
@@ -111,6 +117,7 @@ function formatTimestamp(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Europe/Brussels",
   });
 }
 
@@ -172,17 +179,16 @@ export default function PassClient({
   const canCheckInClub =
     pass.status === "purchased" || pass.status === "active";
 
-  // Museum access: valid from purchase, stays valid until Friday after activation weekend
+  // Museum access: 7 days from activation. TZ-agnostic because it's a
+  // straight 7-day delta, matching the enforcement in /api/scan/route.ts
+  // ("Museum access window has expired (1 week from activation)"). The
+  // previous logic tried to walk to "next Friday 23:59" using local
+  // getDay() / setHours() which gave different results per device
+  // timezone and did not match the scan endpoint.
   const museumAccessExpired = (() => {
-    if (!pass.activatedAt) return false; // Not activated yet = museums still accessible
+    if (!pass.activatedAt) return false;
     const activated = new Date(pass.activatedAt);
-    // Find the next Friday 23:59 after activation
-    const dayOfWeek = activated.getDay();
-    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
-    if (daysUntilFriday === 0) daysUntilFriday = 7; // If activated on Friday, next Friday
-    const deadline = new Date(activated);
-    deadline.setDate(deadline.getDate() + daysUntilFriday);
-    deadline.setHours(23, 59, 59, 999);
+    const deadline = new Date(activated.getTime() + 7 * 24 * 60 * 60 * 1000);
     return new Date() > deadline;
   })();
 
