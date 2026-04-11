@@ -42,6 +42,11 @@ interface TicketClientProps {
   ticket: Ticket;
 }
 
+// Force Europe/Brussels for every customer-visible date on the ticket
+// page. Without this, rendering happens in the runtime's default
+// timezone (UTC on Railway's base image) and an event stored at
+// "11 April 2026 00:00 Brussels" = "10 April 2026 22:00 UTC" shows up
+// as "Friday, 10 April" instead of "Saturday, 11 April".
 function formatEventDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-GB", {
@@ -49,6 +54,7 @@ function formatEventDate(dateStr: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Europe/Brussels",
   });
 }
 
@@ -61,6 +67,7 @@ function formatTimestamp(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Europe/Brussels",
   });
 }
 
