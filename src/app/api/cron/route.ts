@@ -6,8 +6,12 @@ import { db } from "@/lib/db";
 // Protect with a secret: GET /api/cron?secret=xxx
 
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get("secret");
-  if (secret !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
+  // Always require CRON_SECRET. Refuse the request if the env var is not
+  // configured — fail closed instead of the previous inverted check which
+  // would silently skip auth when CRON_SECRET was unset.
+  const expected = process.env.CRON_SECRET;
+  const provided = req.nextUrl.searchParams.get("secret");
+  if (!expected || !provided || provided !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

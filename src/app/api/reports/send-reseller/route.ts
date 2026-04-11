@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getResend, FROM_EMAIL } from "@/lib/email";
+import { isAdminRequest } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { resellerId, half, year } = await req.json();
 
   const reseller = await db.reseller.findUnique({

@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import SwipeSlider from "@/components/SwipeSlider";
+import { scannerHeaders } from "@/lib/scanner";
 
 interface Club {
   id: string;
@@ -52,6 +53,7 @@ interface Pass {
   price: number;
   userId: string;
   status: string;
+  stripePaymentId: string | null;
   activatedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
@@ -188,7 +190,7 @@ export default function PassClient({
       setError(null);
       const res = await fetch("/api/scan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: scannerHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ passId: pass.id, clubId }),
       });
 
@@ -226,7 +228,7 @@ export default function PassClient({
       setError(null);
       const res = await fetch("/api/scan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: scannerHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ passId: pass.id, museumId }),
       });
 
@@ -352,7 +354,11 @@ export default function PassClient({
                         const res = await fetch("/api/passes/assign", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ passId: sp.id, email: assignEmail }),
+                          body: JSON.stringify({
+                            passId: sp.id,
+                            paymentId: pass.stripePaymentId,
+                            email: assignEmail,
+                          }),
                         });
                         if (res.ok) {
                           setAssignedIds((prev) => new Set([...prev, sp.id]));

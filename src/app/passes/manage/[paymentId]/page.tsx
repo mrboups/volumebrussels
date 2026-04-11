@@ -84,7 +84,7 @@ export default async function ManagePassesPage({
                     </Link>
                   </div>
                 ) : (
-                  <PassAssignForm passId={pass.id} />
+                  <PassAssignForm passId={pass.id} paymentId={paymentId} />
                 )}
               </div>
             );

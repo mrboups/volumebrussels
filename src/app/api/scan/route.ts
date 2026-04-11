@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Scanner credential enforcement. If SCAN_SECRET is set, every call must
+// send matching X-Scan-Secret header. If it is not set, the endpoint
+// allows the call through but logs a warning so we can flip the switch
+// without immediately breaking live venue operations.
+function checkScanSecret(req: NextRequest): NextResponse | null {
+  const expected = process.env.SCAN_SECRET;
+  if (!expected) {
+    console.warn(
+      "[security] SCAN_SECRET is not set — /api/scan is currently unauthenticated. Set SCAN_SECRET to enforce."
+    );
+    return null;
+  }
+  const provided = req.headers.get("x-scan-secret");
+  if (!provided || provided !== expected) {
+    return NextResponse.json(
+      { error: "Scanner not authorized" },
+      { status: 401 }
+    );
+  }
+  return null;
+}
+
 function computeExpiresAt(passType: string, now: Date): Date {
   const day = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
 
@@ -49,6 +71,9 @@ function computeExpiresAt(passType: string, now: Date): Date {
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = checkScanSecret(req);
+    if (authError) return authError;
+
     const body = await req.json();
     const { passId, clubId, museumId } = body as {
       passId?: string;

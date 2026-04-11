@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomBytes } from "crypto";
+import { isAdminRequest } from "@/lib/session";
 
 // Admin-only: generate magic links for clubs and resellers
 // POST /api/magic-link { type: "club"|"reseller", entityId: "..." }
 
 export async function POST(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await req.json();
   const { type, entityId } = body as { type: string; entityId: string };
 

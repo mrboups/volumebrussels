@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-export default function PassAssignForm({ passId }: { passId: string }) {
+export default function PassAssignForm({
+  passId,
+  paymentId,
+}: {
+  passId: string;
+  paymentId: string;
+}) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +27,12 @@ export default function PassAssignForm({ passId }: { passId: string }) {
       const res = await fetch("/api/passes/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passId, email, name: name || undefined }),
+        body: JSON.stringify({
+          passId,
+          paymentId,
+          email,
+          name: name || undefined,
+        }),
       });
 
       const data = await res.json();

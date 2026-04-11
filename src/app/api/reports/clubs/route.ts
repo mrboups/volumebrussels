@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isAdminRequest } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const quarter = parseInt(req.nextUrl.searchParams.get("quarter") || "1");
   const year = parseInt(req.nextUrl.searchParams.get("year") || String(new Date().getFullYear()));
 

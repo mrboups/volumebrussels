@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequest } from "@/lib/session";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isAdminRequest())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { title, eventContext } = await req.json();
 
     if (!title) {

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { parseBrusselsDatetimeLocal } from "@/lib/tz";
+import { requireAdmin } from "@/lib/session";
 
 function slugify(name: string) {
   return name
@@ -14,6 +15,7 @@ function slugify(name: string) {
 }
 
 export async function updateSortOrder(id: string, type: "club" | "museum", order: number) {
+  await requireAdmin();
   if (type === "club") {
     await db.club.update({ where: { id }, data: { sortOrder: order } });
   } else {
@@ -45,6 +47,7 @@ function splitTags(value: string): string[] {
 // --------------- CLUBS ---------------
 
 export async function createClub(formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const openDays = splitTags(formData.get("openDays") as string || "");
@@ -80,6 +83,7 @@ export async function createClub(formData: FormData) {
 }
 
 export async function updateClub(id: string, formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const openDays = splitTags(formData.get("openDays") as string || "");
@@ -117,6 +121,7 @@ export async function updateClub(id: string, formData: FormData) {
 }
 
 export async function deleteClub(id: string) {
+  await requireAdmin();
   await db.club.delete({ where: { id } });
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/clubs");
@@ -125,6 +130,7 @@ export async function deleteClub(id: string) {
 // --------------- MUSEUMS ---------------
 
 export async function createMuseum(formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const openDays = splitTags(formData.get("openDays") as string || "");
@@ -152,6 +158,7 @@ export async function createMuseum(formData: FormData) {
 }
 
 export async function updateMuseum(id: string, formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const picture = formData.get("picture") as string;
@@ -181,6 +188,7 @@ export async function updateMuseum(id: string, formData: FormData) {
 }
 
 export async function deleteMuseum(id: string) {
+  await requireAdmin();
   await db.museum.delete({ where: { id } });
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/museums");
@@ -196,6 +204,7 @@ interface PricingPhaseInput {
 }
 
 export async function createEvent(formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const baseSlug = (formData.get("slug") as string) || slugify(name);
   const slug = await uniqueEventSlug(baseSlug);
@@ -238,6 +247,7 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function updateEvent(id: string, formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const slug = (formData.get("slug") as string) || slugify(name);
   const phasesJson = formData.get("pricingPhases") as string;
@@ -283,6 +293,7 @@ export async function updateEvent(id: string, formData: FormData) {
 }
 
 export async function deleteEvent(id: string) {
+  await requireAdmin();
   // Check if event has tickets — never delete an event with tickets
   const ticketCount = await db.ticket.count({ where: { eventId: id } });
 
@@ -304,6 +315,7 @@ export async function deleteEvent(id: string) {
 }
 
 export async function toggleEventSales(id: string) {
+  await requireAdmin();
   const event = await db.event.findUnique({ where: { id } });
   if (!event) return;
   await db.event.update({
@@ -317,6 +329,7 @@ export async function toggleEventSales(id: string) {
 // --------------- ARTICLES ---------------
 
 export async function createArticle(formData: FormData) {
+  await requireAdmin();
   const title = formData.get("title") as string;
   const slug = slugify(title);
 
@@ -339,6 +352,7 @@ export async function createArticle(formData: FormData) {
 }
 
 export async function updateArticle(id: string, formData: FormData) {
+  await requireAdmin();
   const title = formData.get("title") as string;
   const slug = slugify(title);
 
@@ -362,6 +376,7 @@ export async function updateArticle(id: string, formData: FormData) {
 }
 
 export async function deleteArticle(id: string) {
+  await requireAdmin();
   await db.article.delete({ where: { id } });
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/articles");
@@ -371,6 +386,7 @@ export async function deleteArticle(id: string) {
 // --------------- RESELLERS ---------------
 
 export async function createReseller(formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const commissionRate = parseFloat(formData.get("commissionRate") as string) || 0.08;
@@ -399,6 +415,7 @@ export async function createReseller(formData: FormData) {
 }
 
 export async function updateReseller(id: string, formData: FormData) {
+  await requireAdmin();
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const commissionRate = parseFloat(formData.get("commissionRate") as string) || 0.08;
@@ -424,6 +441,7 @@ export async function updateReseller(id: string, formData: FormData) {
 }
 
 export async function deleteReseller(id: string) {
+  await requireAdmin();
   const reseller = await db.reseller.findUnique({ where: { id } });
   if (!reseller) return;
   await db.$transaction(async (tx) => {
@@ -437,6 +455,7 @@ export async function deleteReseller(id: string) {
 // --------------- REPORTS ---------------
 
 export async function sendClubReport(clubId: string, quarter: number, year: number) {
+  await requireAdmin();
   const club = await db.club.findUnique({ where: { id: clubId } });
   if (!club) return { error: "Club not found" };
   if (!club.contactEmail) return { error: "Club has no contact email" };
@@ -565,6 +584,7 @@ export async function sendClubReport(clubId: string, quarter: number, year: numb
 }
 
 export async function sendResellerReport(resellerId: string, half: number, year: number) {
+  await requireAdmin();
   const reseller = await db.reseller.findUnique({
     where: { id: resellerId },
     include: { user: true },
@@ -669,6 +689,7 @@ export async function sendResellerReport(resellerId: string, half: number, year:
 // --------------- PASS EMAIL ---------------
 
 export async function resendPassEmail(passId: string) {
+  await requireAdmin();
   const pass = await db.pass.findUnique({
     where: { id: passId },
     include: { user: true },
@@ -690,6 +711,7 @@ export async function resendPassEmail(passId: string) {
 }
 
 export async function updatePassEmail(passId: string, newEmail: string) {
+  await requireAdmin();
   const pass = await db.pass.findUnique({
     where: { id: passId },
     include: { user: true },
@@ -721,6 +743,7 @@ export async function updatePassEmail(passId: string, newEmail: string) {
 // --------------- TICKET EMAIL ---------------
 
 export async function resendTicketEmail(ticketId: string) {
+  await requireAdmin();
   const ticket = await db.ticket.findUnique({
     where: { id: ticketId },
     include: { user: true, event: true },
@@ -744,6 +767,7 @@ export async function resendTicketEmail(ticketId: string) {
 }
 
 export async function updateTicketEmail(ticketId: string, newEmail: string) {
+  await requireAdmin();
   const ticket = await db.ticket.findUnique({
     where: { id: ticketId },
     include: { user: true, event: true },
@@ -774,6 +798,7 @@ export async function updateTicketEmail(ticketId: string, newEmail: string) {
 // --------------- GUEST PASS ---------------
 
 export async function createGuestPass(formData: FormData) {
+  await requireAdmin();
   const rawEmail = (formData.get("email") as string | null)?.trim().toLowerCase();
   const type = formData.get("type") as "night" | "weekend" | null;
 
@@ -863,6 +888,7 @@ function formDataToGiveawayInput(formData: FormData) {
 }
 
 export async function createGiveawayForm(formData: FormData) {
+  await requireAdmin();
   const input = formDataToGiveawayInput(formData);
 
   if (!input.titleEn) {
@@ -898,6 +924,7 @@ export async function createGiveawayForm(formData: FormData) {
 }
 
 export async function updateGiveawayForm(id: string, formData: FormData) {
+  await requireAdmin();
   const input = formDataToGiveawayInput(formData);
 
   if (!input.titleEn) {
@@ -931,6 +958,7 @@ export async function updateGiveawayForm(id: string, formData: FormData) {
 }
 
 export async function toggleGiveawayForm(id: string) {
+  await requireAdmin();
   const form = await db.giveawayForm.findUnique({ where: { id } });
   if (!form) return { error: "Form not found" };
   await db.giveawayForm.update({
@@ -943,6 +971,7 @@ export async function toggleGiveawayForm(id: string) {
 }
 
 export async function deleteGiveawayForm(id: string) {
+  await requireAdmin();
   // Detach passes that reference this form so the history survives.
   await db.pass.updateMany({
     where: { formId: id },

@@ -6,15 +6,16 @@ import type { PassType } from "@/generated/prisma/client";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { passId, email, name } = body as {
+    const { passId, paymentId, email, name } = body as {
       passId: string;
+      paymentId: string;
       email: string;
       name?: string;
     };
 
-    if (!passId || !email) {
+    if (!passId || !email || !paymentId) {
       return NextResponse.json(
-        { error: "passId and email are required" },
+        { error: "passId, paymentId and email are required" },
         { status: 400 }
       );
     }
@@ -25,6 +26,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Pass not found" }, { status: 404 });
     }
 
+    // Ownership check: the caller must know the Stripe payment ID the
+    // pass was bought under. That ID lives in the success URL and email
+    // sent to the buyer; only the buyer has it.
+    if (!pass.stripePaymentId || pass.stripePaymentId !== paymentId) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     if (pass.status === "refunded") {
       return NextResponse.json(
         { error: "This pass has been refunded" },
@@ -32,12 +43,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Find or create user by email
-    let user = await db.user.findUnique({ where: { email } });
+    let user = await db.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) {
       user = await db.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           name: name || null,
           role: "customer",
         },
@@ -53,7 +66,7 @@ export async function POST(req: NextRequest) {
     // Send pass email to the assigned user
     try {
       await sendPassEmail({
-        to: email,
+        to: normalizedEmail,
         passId: pass.id,
         passType: pass.type as PassType,
         customerName: user.name || name || undefined,

@@ -17,7 +17,9 @@ function authCookieOptions(clear = false) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { action, email, password, name } = await req.json();
+    const { action, email: rawEmail, password, name } = await req.json();
+    const email =
+      typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
     if (action === "register") {
       if (!email || !password) {
