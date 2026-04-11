@@ -31,8 +31,13 @@ export default async function AdminDashboardPage() {
     recentScans,
     recentTickets,
   ] = await Promise.all([
-    db.pass.count(),
-    db.pass.aggregate({ _sum: { price: true } }),
+    // "Total Passes Sold" and "Total Revenue" are net numbers: refunded
+    // passes are reversed transactions and excluded.
+    db.pass.count({ where: { status: { not: "refunded" } } }),
+    db.pass.aggregate({
+      where: { status: { not: "refunded" } },
+      _sum: { price: true },
+    }),
     db.pass.count({ where: { status: "active" } }),
     db.passScan.count(),
     db.club.count(),

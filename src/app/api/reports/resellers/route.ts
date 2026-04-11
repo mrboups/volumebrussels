@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
         where: {
           resellerId: r.id,
           createdAt: { gte: startDate, lt: endDate },
+          // Refunded sales are reversed — no commission.
+          status: { not: "refunded" },
         },
         select: { price: true },
       });

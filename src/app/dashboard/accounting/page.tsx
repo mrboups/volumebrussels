@@ -20,8 +20,15 @@ export default async function AccountingDashboardPage() {
     ticketTotalRevenueAgg,
     ticketClubPayoutAgg,
   ] = await Promise.all([
-    db.pass.count(),
-    db.pass.aggregate({ _sum: { price: true } }),
+    // Net sales count — excludes refunded rows, same as every revenue
+    // line on this page. Refunds reverse the transaction for Volume's
+    // books, but club/museum payouts below are left intact because the
+    // venue still provided service.
+    db.pass.count({ where: { status: { not: "refunded" } } }),
+    db.pass.aggregate({
+      where: { status: { not: "refunded" } },
+      _sum: { price: true },
+    }),
     db.club.findMany(),
     db.museum.findMany(),
     db.passScan.groupBy({
@@ -49,9 +56,15 @@ export default async function AccountingDashboardPage() {
         },
       },
     }),
+    // Net ticket revenue — excludes refunded.
     db.ticket.aggregate({
+      where: { status: { not: "refunded" } },
       _sum: { pricePaid: true },
     }),
+    // Club ticket payout — intentionally does NOT exclude refunded
+    // tickets. Once a ticket has been validated at the door the club
+    // earned that money; a later refund is absorbed by Volume, not
+    // clawed back from the club.
     db.ticket.aggregate({
       where: { validatedAt: { not: null }, event: { clubId: { not: null } } },
       _sum: { pricePaid: true },

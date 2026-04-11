@@ -599,6 +599,8 @@ export async function sendResellerReport(resellerId: string, half: number, year:
     where: {
       resellerId,
       createdAt: { gte: startDate, lt: endDate },
+      // Refunded sales are reversed — no commission owed on them.
+      status: { not: "refunded" },
     },
   });
 

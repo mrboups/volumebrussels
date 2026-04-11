@@ -51,8 +51,13 @@ export default async function ResellerDashboardPage({
     },
   });
 
-  const totalSales = resellerPasses.length;
-  const totalFees = resellerPasses.reduce(
+  // Refunded passes stay visible in the table (with their refunded
+  // status badge) so the reseller can see what happened, but they are
+  // excluded from the totals and commission: a refund reverses the
+  // sale and the associated commission.
+  const billablePasses = resellerPasses.filter((p) => p.status !== "refunded");
+  const totalSales = billablePasses.length;
+  const totalFees = billablePasses.reduce(
     (sum, p) => sum + p.price * (p.reseller?.commissionRate ?? 0.08),
     0
   );
@@ -69,6 +74,7 @@ export default async function ResellerDashboardPage({
         where: {
           ...(resellerId ? { resellerId } : { resellerId: { not: null } }),
           createdAt: { gte: startDate, lt: endDate },
+          status: { not: "refunded" },
         },
         select: { price: true, reseller: { select: { commissionRate: true } } },
       });

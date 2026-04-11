@@ -53,7 +53,13 @@ export default async function ClubDashboardPage({
 
   const clubWhere = clubFilter.id ? { id: clubFilter.id } : {};
   const scanClubFilter = clubFilter.id ? { clubId: clubFilter.id } : { clubId: { not: null as string | null } };
-  // Validated tickets where the event's club matches the filter
+  // Validated tickets where the event's club matches the filter.
+  // NOTE: this filter deliberately does NOT exclude refunded tickets.
+  // Per the refund policy, once a ticket is validated the club has
+  // earned that money; a later refund is absorbed by Volume, not
+  // clawed back from the club. Same rule applies to passScan queries:
+  // scanned visits stay on the club's ledger even if the pass is
+  // later refunded.
   const validatedTicketClubWhere = clubFilter.id
     ? { validatedAt: { not: null }, event: { clubId: clubFilter.id } }
     : { validatedAt: { not: null }, event: { clubId: { not: null as string | null } } };

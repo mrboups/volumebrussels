@@ -157,6 +157,60 @@ All times in emails formatted via `date-fns-tz` in `Europe/Brussels`.
 Admin-only. Two server actions in `_actions.ts`: `refundPass(passId)` and
 `refundTicket(ticketId)`. Both are gated by `requireAdmin()`.
 
+### Accounting impact — the "clubs keep the money" rule
+
+Refunding reverses the transaction for **Volume's books** but does **not**
+claw money back from clubs or museums. The venue physically provided the
+service (door entry, museum admission, event access), so the retribution
+stays on their ledger even if Volume later refunds the customer.
+
+| Query / metric | Refunded row treatment |
+|---|---|
+| `/dashboard/accounting` Total Sales, Pass Revenue, Ticket Revenue | **Excluded** (net revenue) |
+| `/dashboard/admin` Total Passes Sold, Total Revenue | **Excluded** (net revenue) |
+| `/dashboard/reseller` Total Sales, Total Fees, half-year reports | **Excluded** (commission is reversed) |
+| `sendResellerReport` email | **Excluded** |
+| `/api/reports/resellers` | **Excluded** |
+| `/dashboard/accounting` Club / Museum payouts from pass scans | **Kept** — `passScan` is the source of truth for visits; refund does not undo the visit |
+| `/dashboard/accounting` Club ticket payout (validated tickets) | **Kept** — once validated, the club has earned it |
+| `/dashboard/club` pass visits, ticket check-ins, ticket revenue, quarterly reports | **Kept** — clubs see their full retribution |
+| `sendClubReport` email | **Kept** — clubs get paid the full amount |
+| Recent Passes / Recent Tickets / search lists | **Shown** with a `refunded` status badge, not hidden |
+
+### Worked example: pass refund with 2 club scans
+
+```
+Customer buys Weekend Pass €48, scans at C12 and Fuse (payPerVisit €20 each),
+then admin refunds the pass.
+
+Before refund:
+  Pass Revenue          €48
+  Club Payouts          €40   (2 × €20)
+  Platform Revenue      €8
+
+After refund:
+  Pass Revenue          €0     (refunded, excluded)
+  Club Payouts          €40    (scans stay, clubs keep money)
+  Platform Revenue      -€40   (Volume absorbed the refund)
+  Customer got back     €48    (via Stripe)
+```
+
+### Worked example: ticket refund on validated ticket
+
+```
+Customer buys a €20 ticket, validates at the club, then gets refunded.
+
+Before refund:
+  Ticket Revenue        €20
+  Club ticket payout    €20   (validated)
+  Platform Revenue      €0
+
+After refund:
+  Ticket Revenue        €0    (refunded, excluded)
+  Club ticket payout    €20   (still validated, club keeps money)
+  Platform Revenue      -€20  (Volume absorbed the refund)
+```
+
 **Branching on source:**
 
 | `stripePaymentId` prefix | Source | Refund path |
