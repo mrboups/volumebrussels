@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-GB", {

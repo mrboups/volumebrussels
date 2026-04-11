@@ -5,6 +5,9 @@ Disallow: /ticket/
 Disallow: /dashboard/
 Disallow: /api/
 Disallow: /checkout/
+Disallow: /giveaway/
+Disallow: /events-links
+Disallow: /events-links/
 Disallow: /login
 Disallow: /register
 
