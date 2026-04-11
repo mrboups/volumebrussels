@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import SwipeSlider from "@/components/SwipeSlider";
 
@@ -130,11 +131,17 @@ export default function PassClient({
   museums,
   siblingPasses = [],
 }: PassClientProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [pass, setPass] = useState<Pass>(initialPass);
   const [error, setError] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  // Track locally-sent ids ONLY to show an immediate "sent" label
+  // before the server refresh comes back. The server will re-render
+  // siblingPasses without the assigned ones on the next revalidation,
+  // at which point these entries drop out of the list naturally.
+  const [justSentIds, setJustSentIds] = useState<Set<string>>(new Set());
   const [assignError, setAssignError] = useState<string | null>(null);
 
   const clubScans = pass.scans.filter((s) => s.clubId !== null);
@@ -328,65 +335,89 @@ export default function PassClient({
           )}
         </div>
 
-        {/* Assign additional passes — right below header */}
-        {siblingPasses.length > 0 && (
-          <div className="bg-neutral-800 text-white -mx-4 px-5 py-4 border-t border-neutral-700">
-            <p className="text-sm font-bold uppercase tracking-wide mb-3">
-              {siblingPasses.length} additional pass{siblingPasses.length > 1 ? "es" : ""} to assign
-            </p>
-            {siblingPasses.map((sp, i) => (
-              <div key={sp.id} className="flex items-center gap-2 mt-2">
-                {assignedIds.has(sp.id) ? (
-                  <p className="text-green-400 text-sm font-semibold">Pass #{i + 2} sent!</p>
-                ) : assigningId === sp.id ? (
-                  <>
-                    <input
-                      type="email"
-                      placeholder="Enter email address"
-                      value={assignEmail}
-                      onChange={(e) => setAssignEmail(e.target.value)}
-                      className="flex-1 bg-neutral-900 border border-neutral-600 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-400 focus:outline-none"
-                    />
+        {/* Assign additional passes — only rendered by the page server
+            component when this is the buyer's primary pass. The server
+            filters out already-reassigned siblings, so siblingPasses
+            is always the list of passes STILL to assign. We also track
+            locally just-sent ids so the first render after a click
+            shows "Pass #N sent!" before the server refresh catches up. */}
+        {(() => {
+          const stillToAssign = siblingPasses.filter((sp) => !justSentIds.has(sp.id));
+          if (siblingPasses.length === 0) return null;
+          return (
+            <div className="bg-neutral-800 text-white -mx-4 px-5 py-4 border-t border-neutral-700">
+              {stillToAssign.length > 0 ? (
+                <p className="text-sm font-bold uppercase tracking-wide mb-3">
+                  {stillToAssign.length} additional pass
+                  {stillToAssign.length > 1 ? "es" : ""} to assign
+                </p>
+              ) : (
+                <p className="text-sm font-bold uppercase tracking-wide mb-3 text-green-400">
+                  All additional passes assigned
+                </p>
+              )}
+              {siblingPasses.map((sp, i) => (
+                <div key={sp.id} className="flex items-center gap-2 mt-2">
+                  {justSentIds.has(sp.id) ? (
+                    <p className="text-green-400 text-sm font-semibold">Pass #{i + 2} sent!</p>
+                  ) : assigningId === sp.id ? (
+                    <>
+                      <input
+                        type="email"
+                        placeholder="Enter email address"
+                        value={assignEmail}
+                        onChange={(e) => setAssignEmail(e.target.value)}
+                        className="flex-1 bg-neutral-900 border border-neutral-600 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-400 focus:outline-none"
+                      />
+                      <button
+                        onClick={async () => {
+                          setAssignError(null);
+                          const res = await fetch("/api/passes/assign", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              passId: sp.id,
+                              paymentId: pass.stripePaymentId,
+                              email: assignEmail,
+                            }),
+                          });
+                          if (res.ok) {
+                            // Immediate optimistic feedback
+                            setJustSentIds((prev) => new Set([...prev, sp.id]));
+                            setAssigningId(null);
+                            setAssignEmail("");
+                            // Re-fetch the server component so siblingPasses
+                            // gets recomputed (the just-sent pass will drop
+                            // out because its userId no longer matches the
+                            // buyer's).
+                            startTransition(() => {
+                              router.refresh();
+                            });
+                          } else {
+                            const d = await res.json().catch(() => ({}));
+                            setAssignError(d.error || "Failed");
+                          }
+                        }}
+                        className="bg-white text-black text-sm font-semibold px-4 py-2 rounded-lg hover:bg-neutral-200 cursor-pointer"
+                      >
+                        Send
+                      </button>
+                      <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-neutral-500 text-sm cursor-pointer">Cancel</button>
+                    </>
+                  ) : (
                     <button
-                      onClick={async () => {
-                        setAssignError(null);
-                        const res = await fetch("/api/passes/assign", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            passId: sp.id,
-                            paymentId: pass.stripePaymentId,
-                            email: assignEmail,
-                          }),
-                        });
-                        if (res.ok) {
-                          setAssignedIds((prev) => new Set([...prev, sp.id]));
-                          setAssigningId(null);
-                          setAssignEmail("");
-                        } else {
-                          const d = await res.json().catch(() => ({}));
-                          setAssignError(d.error || "Failed");
-                        }
-                      }}
-                      className="bg-white text-black text-sm font-semibold px-4 py-2 rounded-lg hover:bg-neutral-200 cursor-pointer"
+                      onClick={() => setAssigningId(sp.id)}
+                      className="bg-[#1a7fc7] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1565a0] cursor-pointer"
                     >
-                      Send
+                      Assign pass #{i + 2}
                     </button>
-                    <button onClick={() => { setAssigningId(null); setAssignEmail(""); }} className="text-neutral-500 text-sm cursor-pointer">Cancel</button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setAssigningId(sp.id)}
-                    className="bg-[#1a7fc7] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1565a0] cursor-pointer"
-                  >
-                    Assign pass #{i + 2}
-                  </button>
-                )}
-              </div>
-            ))}
-            {assignError && <p className="text-red-400 text-sm mt-2">{assignError}</p>}
-          </div>
-        )}
+                  )}
+                </div>
+              ))}
+              {assignError && <p className="text-red-400 text-sm mt-2">{assignError}</p>}
+            </div>
+          );
+        })()}
 
         {/* Warning */}
         <div className="bg-yellow-900/30 border border-yellow-700/50 px-4 py-3 mb-6 mt-4">

@@ -102,7 +102,14 @@ export default async function PassPage({
     updatedAt: museum.updatedAt.toISOString(),
   }));
 
-  // Find sibling passes (same purchase) that need assignment
+  // Sibling-pass assignment UI is only shown on the BUYER's pass. The
+  // buyer's pass is the first one created inside a Stripe payment
+  // group — all passes in a multi-quantity purchase are created in a
+  // tight loop by the webhook with the same buyer userId. When the
+  // buyer reassigns a sibling via /api/passes/assign, that sibling's
+  // userId changes to the new recipient. We use that to filter out
+  // already-assigned siblings so the "N passes to assign" header and
+  // the per-pass buttons both stay in sync.
   let siblingPasses: { id: string; userId: string }[] = [];
   if (pass.stripePaymentId) {
     const allPasses = await db.pass.findMany({
@@ -110,8 +117,17 @@ export default async function PassPage({
       orderBy: { createdAt: "asc" },
       select: { id: true, userId: true },
     });
-    // Siblings are passes from same purchase that are NOT this one
-    siblingPasses = allPasses.filter((p) => p.id !== pass.id);
+    const primary = allPasses[0];
+    const isPrimary = primary && primary.id === pass.id;
+    if (isPrimary) {
+      // Only siblings that are still owned by the primary's userId are
+      // unassigned. Anything else has already been given to someone.
+      siblingPasses = allPasses
+        .slice(1)
+        .filter((p) => p.userId === primary.userId);
+    }
+    // Secondary passes (the ones already assigned away) get an empty
+    // list, so the whole assign block is hidden on their view.
   }
 
   return (
