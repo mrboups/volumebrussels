@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkSameOrigin, rateLimit } from "@/lib/scanGuard";
+import {
+  computeTicketSwipeWindow,
+  formatWindowForHuman,
+} from "@/lib/eventWindow";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,6 +46,32 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
+
+    // Swipe-window check. Outside the window the ticket cannot be
+    // validated. If the close time has already passed, also flip the
+    // ticket's status to "expired" so future loads of the ticket page
+    // show the correct state without waiting for the cron sweep.
+    const window = computeTicketSwipeWindow(ticket.event.date);
+    if (now > window.closes) {
+      await db.ticket.update({
+        where: { id: ticketId },
+        data: { status: "expired" },
+      });
+      const { closes } = formatWindowForHuman(window);
+      return NextResponse.json(
+        {
+          error: `Ticket window closed at ${closes}. Ticket marked as expired.`,
+        },
+        { status: 400 }
+      );
+    }
+    if (now < window.opens) {
+      const { opens } = formatWindowForHuman(window);
+      return NextResponse.json(
+        { error: `Ticket check-in opens at ${opens}` },
+        { status: 400 }
+      );
+    }
 
     const updatedTicket = await db.ticket.update({
       where: { id: ticketId },

@@ -68,8 +68,32 @@ Each event has up to 3 phases: `early_bird`, `regular`, `last_minute`. Active ph
 ### Ticket lifecycle
 
 1. **`purchased`** — Stripe webhook creates the ticket after payment
-2. **`used`** — Door staff swipes on the customer's phone → `validatedAt = now()` + status = `used`
-3. **`expired`** / **`refunded`** — Manual or background state
+2. **`used`** — Door staff swipes on the customer's phone inside the swipe window → `validatedAt = now()` + status = `used`
+3. **`expired`** — Swipe window closed without the ticket being used. Set either lazily (a post-window swipe attempt auto-flips the row) or by the `/api/cron` sweep.
+4. **`refunded`** — Admin action via `refundTicket`.
+
+### Ticket swipe window
+
+A ticket can only be validated inside a time window anchored on the event's Brussels calendar day. The rules mirror the night-pass logic so that an event "on Saturday" gets the same Saturday-night validity as a night pass would.
+
+| Event's Brussels day | Window opens | Window closes |
+|---|---|---|
+| **Friday** | Fri 18:00 | Sat 11:00 |
+| **Saturday** | Sat 18:00 | Mon 02:00 |
+| Any other day (fallback) | Event day 18:00 | Next day 06:00 |
+
+Implementation: `src/lib/eventWindow.ts → computeTicketSwipeWindow(eventDate)` returns `{ opens, closes }` as UTC Dates, consumed by:
+
+- **`/api/tickets/validate`** — rejects `POST` requests before `opens` (error: "Ticket check-in opens at …") and after `closes` (error: "Ticket window closed at …. Ticket marked as expired."). In the latter case the endpoint also flips the ticket to `status = "expired"` so the ticket page reflects the state immediately.
+- **`/api/cron`** — hourly sweep over `Ticket` rows with `status = "purchased"` and an event date older than 24 hours. Any row whose window has closed is bulk-updated to `expired`.
+
+Notes:
+
+- The window check happens after the existing `checkSameOrigin` + rate-limit defenses, so out-of-window swipes are still rate-limited and cross-origin-blocked.
+- The rule uses the event's **Brussels calendar day**, not its wall-clock `event.date` time. A BLUR event stored as "11 April 2026 00:00 Brussels" is a Saturday event, so its window is Sat 18:00 → Mon 02:00. An event stored as "11 April 2026 23:00" is still Saturday in Brussels and gets the same window.
+- Unvalidated expired tickets don't pay the club (only `validatedAt IS NOT NULL` rows count toward club ticket revenue), so the auto-expire flow is safe for the accounting side — it just reflects reality on the row itself.
+
+### Club payout from tickets
 
 ### Club payout from tickets
 
