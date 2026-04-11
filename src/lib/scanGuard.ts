@@ -17,6 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit as sharedRateLimit, getClientIp } from "./rateLimiter";
 
 export function checkSameOrigin(req: NextRequest): NextResponse | null {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -59,55 +60,18 @@ export function checkSameOrigin(req: NextRequest): NextResponse | null {
 
 // ---------- Rate limit ----------
 
-interface Bucket {
-  windowStart: number;
-  count: number;
-}
-
-const WINDOW_MS = 60_000; // 1 minute
-const MAX_PER_WINDOW = 10;
-const buckets = new Map<string, Bucket>();
-
-// Drop old buckets periodically so the map does not grow unbounded.
-function sweepBuckets(now: number) {
-  if (buckets.size < 512) return;
-  for (const [key, bucket] of buckets) {
-    if (now - bucket.windowStart > WINDOW_MS * 4) {
-      buckets.delete(key);
-    }
-  }
-}
-
 /**
  * Reject if the same (IP, resourceId) combination has hit the endpoint
- * more than MAX_PER_WINDOW times in the current minute.
+ * more than 10 times in the last minute.
  */
 export function rateLimit(
   req: NextRequest,
   resourceId: string
 ): NextResponse | null {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
-
-  const key = `${ip}|${resourceId}`;
-  const now = Date.now();
-  sweepBuckets(now);
-
-  const bucket = buckets.get(key);
-  if (!bucket || now - bucket.windowStart > WINDOW_MS) {
-    buckets.set(key, { windowStart: now, count: 1 });
-    return null;
-  }
-
-  bucket.count += 1;
-  if (bucket.count > MAX_PER_WINDOW) {
-    return NextResponse.json(
-      { error: "Too many attempts, please try again in a minute" },
-      { status: 429 }
-    );
-  }
-
-  return null;
+  const ip = getClientIp(req);
+  return sharedRateLimit(`${ip}|${resourceId}`, {
+    namespace: "scan",
+    windowMs: 60_000,
+    max: 10,
+  });
 }

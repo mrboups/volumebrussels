@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword, generateToken } from "@/lib/auth";
+import { rateLimit, getClientIp } from "@/lib/rateLimiter";
 
 const COOKIE_NAME = "volume_token";
 const MAX_AGE = 90 * 24 * 60 * 60; // 90 days in seconds
@@ -20,8 +21,17 @@ export async function POST(req: NextRequest) {
     const { action, email: rawEmail, password, name } = await req.json();
     const email =
       typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
+    const ip = getClientIp(req);
 
     if (action === "register") {
+      // Cap account creation at 3 per minute per IP
+      const rlError = rateLimit(`register|${ip}`, {
+        namespace: "auth",
+        windowMs: 60_000,
+        max: 3,
+      });
+      if (rlError) return rlError;
+
       if (!email || !password) {
         return NextResponse.json(
           { error: "Email and password are required" },
@@ -58,6 +68,25 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "login") {
+      // Cap login attempts: 5 per minute per IP + 5 per minute per email.
+      // Catches both a single attacker hammering from one IP and a
+      // distributed slow spray against one account.
+      const rlErrorIp = rateLimit(`login-ip|${ip}`, {
+        namespace: "auth",
+        windowMs: 60_000,
+        max: 5,
+      });
+      if (rlErrorIp) return rlErrorIp;
+
+      if (email) {
+        const rlErrorEmail = rateLimit(`login-email|${email}`, {
+          namespace: "auth",
+          windowMs: 60_000,
+          max: 5,
+        });
+        if (rlErrorEmail) return rlErrorEmail;
+      }
+
       if (!email || !password) {
         return NextResponse.json(
           { error: "Email and password are required" },
