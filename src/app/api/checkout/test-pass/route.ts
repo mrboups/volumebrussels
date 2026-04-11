@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
+import { isAdminRequest } from "@/lib/session";
 
 // Legacy €0.50 test Prices — kept live specifically so the admin can
 // trigger a real Stripe checkout without paying the production €29/€48.
@@ -10,6 +11,10 @@ const TEST_PASS_STRIPE_PRICES: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isAdminRequest())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { passType } = body as { passType?: string };
 

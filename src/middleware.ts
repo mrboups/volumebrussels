@@ -13,11 +13,11 @@ const protectedPatterns = [
   /^\/dashboard(\/.*)?$/,
 ];
 
-// API routes that require authentication (POST only checked separately)
-const protectedApiPatterns = [
-  { pattern: /^\/api\/passes$/, methods: ["POST"] },
-  { pattern: /^\/api\/tickets$/, methods: ["POST"] },
-];
+// API routes that require authentication (POST only checked separately).
+// Left intentionally empty: the legacy /api/passes and /api/tickets POST
+// handlers have been deleted. Admin API routes enforce their own
+// isAdminRequest() guard at the handler level.
+const protectedApiPatterns: { pattern: RegExp; methods: string[] }[] = [];
 
 // Routes that must never be indexed by search engines. Each one gets an
 // X-Robots-Tag header on every response. These are private by purpose
@@ -125,8 +125,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/api/passes",
-    "/api/tickets",
     // Noindex routes (no auth, just X-Robots-Tag header)
     "/pass/:path*",
     "/ticket/:path*",
