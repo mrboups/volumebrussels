@@ -19,6 +19,8 @@ export default async function AccountingDashboardPage() {
     recentScans,
     ticketTotalRevenueAgg,
     ticketClubPayoutAgg,
+    refundedPassAgg,
+    refundedTicketAgg,
   ] = await Promise.all([
     // Net sales count — excludes refunded rows, same as every revenue
     // line on this page. Refunds reverse the transaction for Volume's
@@ -69,11 +71,35 @@ export default async function AccountingDashboardPage() {
       where: { validatedAt: { not: null }, event: { clubId: { not: null } } },
       _sum: { pricePaid: true },
     }),
+    // Refund totals — informational, for the "Refunds Issued" card.
+    // These are rows where status = "refunded" and represent money
+    // that actually left Volume via Stripe (or would have, for free
+    // guest/giveaway sources). Pass.price and Ticket.pricePaid
+    // respectively hold the refund amount because that's what was
+    // originally paid.
+    db.pass.aggregate({
+      where: { status: "refunded" },
+      _sum: { price: true },
+      _count: { id: true },
+    }),
+    db.ticket.aggregate({
+      where: { status: "refunded" },
+      _sum: { pricePaid: true },
+      _count: { id: true },
+    }),
   ]);
 
   const totalPassRevenue = revenueAgg._sum.price ?? 0;
   const totalTicketRevenue = ticketTotalRevenueAgg._sum.pricePaid ?? 0;
   const totalRevenue = totalPassRevenue + totalTicketRevenue;
+
+  // Refund totals (informational)
+  const passRefundAmount = refundedPassAgg._sum.price ?? 0;
+  const passRefundCount = refundedPassAgg._count.id ?? 0;
+  const ticketRefundAmount = refundedTicketAgg._sum.pricePaid ?? 0;
+  const ticketRefundCount = refundedTicketAgg._count.id ?? 0;
+  const totalRefundAmount = passRefundAmount + ticketRefundAmount;
+  const totalRefundCount = passRefundCount + ticketRefundCount;
 
   // Club payouts from pass scans
   const clubMap = new Map(clubs.map((c) => [c.id, c]));
@@ -104,6 +130,12 @@ export default async function AccountingDashboardPage() {
     { label: "Club Payouts", value: eur.format(totalClubPayouts) },
     { label: "Museum Payouts", value: eur.format(totalMuseumPayouts) },
     { label: "Platform Revenue", value: eur.format(platformRevenue) },
+    {
+      label: "Refunds Issued",
+      value: eur.format(totalRefundAmount),
+      sublabel: `${totalRefundCount} refund${totalRefundCount === 1 ? "" : "s"}`,
+      accent: "red" as const,
+    },
   ];
 
   return (
@@ -111,13 +143,30 @@ export default async function AccountingDashboardPage() {
       <h1 className="text-2xl font-bold text-gray-900">Accounting Dashboard</h1>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">{s.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+        {stats.map((s) => {
+          const accent =
+            "accent" in s && s.accent === "red"
+              ? "border-red-200 bg-red-50/40"
+              : "border-gray-200 bg-white";
+          const valueColor =
+            "accent" in s && s.accent === "red" ? "text-red-700" : "text-gray-900";
+          const sublabel = "sublabel" in s ? s.sublabel : undefined;
+          return (
+            <div
+              key={s.label}
+              className={`rounded-lg border p-5 ${accent}`}
+            >
+              <p className="text-sm text-gray-500">{s.label}</p>
+              <p className={`text-2xl font-bold mt-1 ${valueColor}`}>
+                {s.value}
+              </p>
+              {sublabel && (
+                <p className="text-xs text-gray-400 mt-1">{sublabel}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Detail table */}
