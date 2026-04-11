@@ -80,9 +80,14 @@ src/app/
     admin/…                        Clubs, museums, events, articles, giveaways,
                                    resellers, reports, overview (Recent Passes)
     admin/_actions.ts              All admin server actions (every function
-                                   gated by requireAdmin())
+                                   gated by requireAdmin()). Includes refund
+                                   (refundPass, refundTicket), undo
+                                   (undoPassScan, undoTicketValidation), plus
+                                   CRUD and report-send actions.
+    admin/passes/[id]/page.tsx     Per-pass detail + scan history + refund
     admin/_components/             PassGroup, TicketActions, ToggleSalesButton,
                                    GuestPassButton, TestPassButton,
+                                   UndoScanButton, RefundButton,
                                    GiveawayFormEditor, etc.
     club/page.tsx                  Club dashboard, filtered by magic-link clubId
     accounting/page.tsx            Finance breakdown (pass + ticket + payouts)
