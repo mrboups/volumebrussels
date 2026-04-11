@@ -43,14 +43,6 @@ contains `{ userId, email, role }` signed with `NEXTAUTH_SECRET`.
 
 ## Passes
 
-### GET /api/passes?userId={id}
-List passes for a user (with scans). No explicit guard; considered safe because
-the query requires knowing the user id.
-
-### POST /api/passes
-Internal create path; the live system uses the Stripe webhook instead. Protected
-by middleware matcher.
-
 ### POST /api/passes/assign
 Reassign a multi-pass purchase's extra passes to different emails.
 
@@ -205,15 +197,12 @@ billing by anonymous callers.
 
 ## Clubs / Museums / Offers / Articles
 
-### GET /api/clubs / GET /api/museums
-Public read. Used by the homepage + `/offer` page.
-
-### POST /api/clubs / POST /api/museums
-Admin path. Prefer the server actions in `_actions.ts` rather than these
-routes; the routes are legacy scaffolding.
-
-### GET /api/offers?clubId={id}
-Aggregated club + upcoming events.
+There are no dedicated CRUD API routes for clubs, museums, offers or articles.
+All read paths use direct Prisma calls in server components (e.g. `/offer`
+calls `db.club.findMany` directly) and all writes go through admin server
+actions in `_actions.ts` (gated by `requireAdmin()`). The legacy
+`/api/clubs`, `/api/museums`, `/api/offers`, `/api/passes`, `/api/tickets`,
+`/api/passes/scan` routes were scaffolding and have been removed.
 
 ---
 
@@ -255,12 +244,11 @@ page can render a localized message in the active language.
 
 | Route | Guard |
 |---|---|
-| `/api/auth` | Public + rate limit |
-| `/api/passes GET` | Open (requires knowing a userId) |
+| `/api/auth` | Public + rate limit (3 register/min/IP, 5 login/min/IP + 5/min/email) |
 | `/api/passes/assign` | Ownership via `paymentId` |
-| `/api/scan`, `/api/tickets/validate` | Same-origin + rate limit (link is the credential) |
+| `/api/scan`, `/api/tickets/validate` | `checkSameOrigin` + per-IP rate limit (link is the credential) |
 | `/api/checkout`, `/api/checkout/ticket` | Public (creates a Stripe Checkout Session) |
-| `/api/checkout/test-pass` | Public (but only surfaced in admin UI) |
+| `/api/checkout/test-pass` | Admin |
 | `/api/webhooks/stripe` | Stripe signature via `STRIPE_WEBHOOK_SECRET` |
 | `/api/magic-link` | Admin |
 | `/api/reports/*` | Admin |

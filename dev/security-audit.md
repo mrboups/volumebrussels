@@ -8,6 +8,24 @@ Most recent audit: **2026-04-11** — automated code review covering auth,
 authorization, IDOR, Stripe integration, XSS, input validation, secrets,
 rate limiting and transport headers.
 
+**Follow-up verification pass (same day)** found a batch of legacy
+scaffold API routes that nothing in the app actually called but which
+exposed unauthenticated writes:
+
+- `/api/passes/scan` — duplicate of `/api/scan` with older expiry logic
+  and NO scan guard, completely bypassing the C1 defenses
+- `/api/passes POST`, `/api/tickets POST` — any logged-in customer could
+  self-issue a free pass or ticket
+- `/api/clubs POST`, `/api/museums POST` — anonymous DB writes
+- `/api/clubs GET`, `/api/museums GET`, `/api/offers GET`, `/api/passes GET`,
+  `/api/tickets GET` — dead read paths
+
+All six route files were **deleted**. `/api/checkout/test-pass` was also
+gated with `isAdminRequest()` (previously public). All writes on clubs /
+museums / events / articles / giveaways / resellers / passes / tickets
+now exclusively go through admin server actions in `_actions.ts`, each
+starting with `await requireAdmin()`.
+
 ---
 
 ## Status summary
