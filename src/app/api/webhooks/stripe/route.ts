@@ -5,6 +5,34 @@ import { sendPassEmail, sendTicketEmail } from "@/lib/email";
 import type Stripe from "stripe";
 import type { PassType, PricingPhaseName } from "@/generated/prisma/client";
 
+/**
+ * Resolve the Stripe fee in euros for a checkout session by expanding
+ * the payment intent → latest charge → balance transaction. Returns
+ * null if anything is missing (no charge yet, no balance transaction
+ * yet, etc.) so the caller can store null and we can read the fee
+ * later if needed.
+ */
+async function fetchStripeFeeForPaymentIntent(
+  paymentIntentId: string
+): Promise<number | null> {
+  if (!paymentIntentId) return null;
+  try {
+    const stripe = getStripe();
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+    const charge = pi.latest_charge;
+    if (!charge || typeof charge === "string") return null;
+    const bt = charge.balance_transaction;
+    if (!bt || typeof bt === "string") return null;
+    // bt.fee is in the smallest currency unit (cents)
+    return bt.fee / 100;
+  } catch (err) {
+    console.error("Failed to fetch Stripe fee:", err);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
@@ -104,12 +132,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const pricePerPass = totalPriceInEuros / quantity;
   const stripePaymentId = session.payment_intent as string | null;
 
+  // Fetch the Stripe fee from the balance transaction. One PaymentIntent
+  // = one total fee (Stripe charges once per charge, not per line item),
+  // so we split it proportionally across the passes in this purchase.
+  const totalStripeFee = stripePaymentId
+    ? await fetchStripeFeeForPaymentIntent(stripePaymentId)
+    : null;
+  const stripeFeePerPass =
+    totalStripeFee !== null ? totalStripeFee / quantity : null;
+
   const createdPasses = [];
   for (let i = 0; i < quantity; i++) {
     const pass = await db.pass.create({
       data: {
         type: passType,
         price: pricePerPass,
+        stripeFee: stripeFeePerPass,
         userId: user.id,
         stripePaymentId,
         status: "purchased",
@@ -183,12 +221,16 @@ async function handleTicketCheckout(
 
   const pricePaid = (session.amount_total ?? 0) / 100;
   const stripePaymentId = session.payment_intent as string | null;
+  const stripeFee = stripePaymentId
+    ? await fetchStripeFeeForPaymentIntent(stripePaymentId)
+    : null;
 
   const ticket = await db.ticket.create({
     data: {
       eventId: event.id,
       userId: user.id,
       stripePaymentId,
+      stripeFee,
       status: "purchased",
       pricePaid,
       pricingPhase: pricingPhaseName,
@@ -229,14 +271,15 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     return;
   }
 
+  const now = new Date();
   const updatedPasses = await db.pass.updateMany({
-    where: { stripePaymentId: paymentIntentId },
-    data: { status: "refunded" },
+    where: { stripePaymentId: paymentIntentId, status: { not: "refunded" } },
+    data: { status: "refunded", refundedAt: now },
   });
 
   const updatedTickets = await db.ticket.updateMany({
-    where: { stripePaymentId: paymentIntentId },
-    data: { status: "refunded" },
+    where: { stripePaymentId: paymentIntentId, status: { not: "refunded" } },
+    data: { status: "refunded", refundedAt: now },
   });
 
   console.log("Refunded passes/tickets:", {

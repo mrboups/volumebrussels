@@ -188,6 +188,76 @@ affected surface (`/dashboard/accounting`, `/dashboard/club` current and
 per-quarter views, `sendClubReport` email) now does
 `findMany` + in-memory reduce through `computeClubTicketFee`.
 
+## Accounting dashboard — period semantics
+
+`/dashboard/accounting` supports a period filter via URL query params:
+
+- `?period=all` (default) — all time
+- `?period=ytd` — year to date
+- `?period=this-quarter`, `?period=last-quarter`
+- `?period=q1-2026` through `?period=q4-<year>` — specific quarter
+- `?from=YYYY-MM-DD&to=YYYY-MM-DD` — custom range (inclusive of both days)
+
+Parsing is handled by `src/lib/period.ts → parsePeriod()`.
+
+### What "in period" means for each line item
+
+| Line | Filter |
+|---|---|
+| Pass Revenue, Ticket Revenue, Total Revenue (gross) | `Pass.createdAt` / `Ticket.createdAt` in period |
+| Refunds Issued | `Pass.refundedAt` / `Ticket.refundedAt` in period (NOT the sale date) |
+| Club / Museum payouts from pass scans | `PassScan.scannedAt` in period |
+| Club payouts from validated tickets | `Ticket.validatedAt` in period |
+| Reseller commission | `Pass.createdAt` / `Ticket.createdAt` in period, skipping refunded rows |
+| Stripe Fees | `Pass.createdAt` / `Ticket.createdAt` in period (the `stripeFee` column is set at the time of the sale) |
+
+A pass sold in Q1 and refunded in Q2 therefore appears as **gross Q1 revenue** AND a **Q2 refund**. Q1's closed books show the sale; Q2's closed books show the reversal. This matches standard accounting treatment and makes period totals stable — once Q1 is past, nothing moves in Q1 because of events that happened in Q2.
+
+### Platform Net formula
+
+```
+Platform Net =  Gross Revenue
+             −  Refunds Issued
+             −  Club Payouts
+             −  Museum Payouts
+             −  Reseller Commission
+             −  Stripe Fees
+```
+
+All six components are scoped to the same period. When the period is "all time", this equals the lifetime profit.
+
+## Stripe fees
+
+`stripeFee` is persisted per row at the time of purchase. The webhook at
+`/api/webhooks/stripe` retrieves the `PaymentIntent` and expands
+`latest_charge.balance_transaction` to read `fee` (cents), then divides
+by 100 to store €. For multi-pass purchases the total fee is split
+equally across the created `Pass` rows.
+
+Rows created before this field existed have `stripeFee = null`. The
+accounting dashboard sums only non-null values and flags the period with
+a "partial — older rows have no stored fee" caption when any null is
+found in the period's sales.
+
+Non-Stripe rows (guest passes, giveaway passes, legacy imports) also have
+`stripeFee = null` — they didn't generate a Stripe charge.
+
+## CSV export
+
+Two admin-gated endpoints:
+
+- `GET /api/export/accounting?period=...` — full transaction dump for the
+  period: every pass sale, ticket sale, pass refund, ticket refund, with
+  columns for reseller + reseller commission + club fee + Stripe fee +
+  payment ID. Sale rows use `createdAt`, refund rows use `refundedAt`.
+- `GET /api/export/reseller?period=...&resellerId=...` — per-reseller or
+  all-resellers breakdown. Magic-link resellers can also call this with
+  their `token=` instead of admin auth to download their own CSV.
+
+Both return `text/csv` with a `Content-Disposition: attachment` header
+so the browser downloads the file directly. File name includes the
+period range.
+
 ## Financial model summary
 
 ```

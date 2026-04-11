@@ -240,6 +240,21 @@ page can render a localized message in the active language.
 
 ---
 
+## Export
+
+### GET /api/export/accounting?period=...&from=...&to=...
+Admin-only. Returns `text/csv` dump of every pass/ticket sale and refund
+in the period, with columns for amount, reseller + commission, club
+fee, Stripe fee, payment ID. See `specs/business-logic.md → CSV export`
+for the period filter spec.
+
+### GET /api/export/reseller?period=...&resellerId=...&token=...
+Admin OR the reseller themselves (via magic-link `token=`). Global
+when called without `resellerId`, scoped when set. Returns per-reseller
+pass + ticket sales with commission.
+
+---
+
 ## Authorization summary
 
 | Route | Guard |
@@ -255,6 +270,8 @@ page can render a localized message in the active language.
 | `/api/ai`, `/api/ai/translate` | Admin |
 | `/api/upload` | Admin |
 | `/api/cron` | `CRON_SECRET` query param |
+| `/api/export/accounting` | Admin |
+| `/api/export/reseller` | Admin OR reseller magic-link token |
 | All admin server actions in `_actions.ts` | `requireAdmin()` |
 
 The middleware (`src/middleware.ts`) also injects `x-user-id` / `x-user-role`

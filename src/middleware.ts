@@ -33,6 +33,7 @@ const noIndexPatterns = [
   /^\/checkout(\/.*)?$/,
   /^\/login\/?$/,
   /^\/register\/?$/,
+  /^\/api\/export\/.+/,
 ];
 
 const ROBOTS_HEADER = "noindex, nofollow, noarchive, nosnippet";
@@ -134,5 +135,6 @@ export const config = {
     "/checkout/:path*",
     "/login",
     "/register",
+    "/api/export/:path*",
   ],
 };

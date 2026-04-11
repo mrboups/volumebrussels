@@ -1,52 +1,135 @@
 import { db } from "@/lib/db";
-import { computeClubTicketFee } from "@/lib/pricing";
+import Link from "next/link";
+import {
+  parsePeriod,
+  formatPeriodLabel,
+  standardPeriodChoices,
+  prismaPeriodFilter,
+  type Period,
+} from "@/lib/period";
+import { computeClubTicketFee, parseTiers, resellerCommission } from "@/lib/pricing";
+import PeriodSelector from "../_components/PeriodSelector";
 
 export const dynamic = "force-dynamic";
 
-const eur = new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" });
+const eur = new Intl.NumberFormat("fr-BE", {
+  style: "currency",
+  currency: "EUR",
+});
 
 function truncateId(id: string) {
   return id.slice(0, 8) + "...";
 }
 
-export default async function AccountingDashboardPage() {
+export default async function AccountingDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = await searchParams;
+  const plain: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "string") plain[k] = v;
+  }
+  const period: Period = parsePeriod(plain);
+  const dateRange = prismaPeriodFilter(period);
+
+  // Filters for "sales created in period" vs "refunded in period" vs
+  // "scanned in period" vs "validated in period".
+  const createdAtFilter = dateRange ? { createdAt: dateRange } : {};
+  const scannedAtFilter = dateRange ? { scannedAt: dateRange } : {};
+  const validatedAtFilter = dateRange
+    ? { validatedAt: dateRange }
+    : { validatedAt: { not: null } };
+  const refundedAtFilter = dateRange
+    ? { refundedAt: dateRange }
+    : { refundedAt: { not: null } };
+
   const [
-    totalSales,
-    revenueAgg,
     clubs,
     museums,
+    // --- SALES IN PERIOD (gross, not filtering refunds yet) ---
+    passesInPeriod,
+    ticketsInPeriod,
+    // --- PAYOUTS IN PERIOD ---
     clubScanCounts,
     museumScanCounts,
-    recentScans,
-    ticketTotalRevenueAgg,
     clubPayoutTickets,
-    refundedPassAgg,
-    refundedTicketAgg,
+    // --- REFUNDS IN PERIOD (by refundedAt) ---
+    refundedPassesInPeriod,
+    refundedTicketsInPeriod,
+    // --- DETAIL TABLE ---
+    recentScans,
   ] = await Promise.all([
-    // Net sales count — excludes refunded rows, same as every revenue
-    // line on this page. Refunds reverse the transaction for Volume's
-    // books, but club/museum payouts below are left intact because the
-    // venue still provided service.
-    db.pass.count({ where: { status: { not: "refunded" } } }),
-    db.pass.aggregate({
-      where: { status: { not: "refunded" } },
-      _sum: { price: true },
-    }),
     db.club.findMany(),
     db.museum.findMany(),
+
+    // Passes whose createdAt is in the period
+    db.pass.findMany({
+      where: createdAtFilter,
+      select: {
+        id: true,
+        price: true,
+        stripeFee: true,
+        status: true,
+        stripePaymentId: true,
+        resellerId: true,
+        reseller: { select: { passCommissionTiers: true } },
+      },
+    }),
+    // Tickets whose createdAt is in the period
+    db.ticket.findMany({
+      where: createdAtFilter,
+      select: {
+        id: true,
+        pricePaid: true,
+        stripeFee: true,
+        status: true,
+        stripePaymentId: true,
+        resellerId: true,
+        reseller: { select: { ticketCommissionTiers: true } },
+      },
+    }),
+
+    // Pass scans in period — scan-based club/museum payout
     db.passScan.groupBy({
       by: ["clubId"],
-      where: { clubId: { not: null } },
+      where: { clubId: { not: null }, ...scannedAtFilter },
       _count: { id: true },
     }),
     db.passScan.groupBy({
       by: ["museumId"],
-      where: { museumId: { not: null } },
+      where: { museumId: { not: null }, ...scannedAtFilter },
       _count: { id: true },
     }),
+    // Tickets validated in period → club ticket revenue
+    db.ticket.findMany({
+      where: {
+        ...validatedAtFilter,
+        event: { clubId: { not: null } },
+      },
+      select: {
+        pricePaid: true,
+        event: { select: { clubTicketFee: true } },
+      },
+    }),
+
+    // Passes refunded in period
+    db.pass.findMany({
+      where: { status: "refunded", ...refundedAtFilter },
+      select: { price: true, stripeFee: true },
+    }),
+    // Tickets refunded in period
+    db.ticket.findMany({
+      where: { status: "refunded", ...refundedAtFilter },
+      select: { pricePaid: true, stripeFee: true },
+    }),
+
+    // Last 100 scans for the detail table
     db.passScan.findMany({
       take: 100,
       orderBy: { scannedAt: "desc" },
+      where: scannedAtFilter,
       include: {
         club: { select: { name: true, payPerVisit: true } },
         museum: { select: { name: true, payPerVisit: true } },
@@ -59,131 +142,228 @@ export default async function AccountingDashboardPage() {
         },
       },
     }),
-    // Net ticket revenue — excludes refunded.
-    db.ticket.aggregate({
-      where: { status: { not: "refunded" } },
-      _sum: { pricePaid: true },
-    }),
-    // Club ticket payout — intentionally does NOT exclude refunded
-    // tickets. Once a ticket has been validated at the door the club
-    // earned that money; a later refund is absorbed by Volume, not
-    // clawed back from the club. Fetched as a list rather than an
-    // aggregate because the per-ticket amount comes from
-    // computeClubTicketFee() (price-dependent formula plus optional
-    // per-event override), not from a DB column.
-    db.ticket.findMany({
-      where: { validatedAt: { not: null }, event: { clubId: { not: null } } },
-      select: {
-        pricePaid: true,
-        event: { select: { clubTicketFee: true } },
-      },
-    }),
-    // Refund totals — informational, for the "Refunds Issued" card.
-    // These are rows where status = "refunded" and represent money
-    // that actually left Volume via Stripe (or would have, for free
-    // guest/giveaway sources). Pass.price and Ticket.pricePaid
-    // respectively hold the refund amount because that's what was
-    // originally paid.
-    db.pass.aggregate({
-      where: { status: "refunded" },
-      _sum: { price: true },
-      _count: { id: true },
-    }),
-    db.ticket.aggregate({
-      where: { status: "refunded" },
-      _sum: { pricePaid: true },
-      _count: { id: true },
-    }),
   ]);
 
-  const totalPassRevenue = revenueAgg._sum.price ?? 0;
-  const totalTicketRevenue = ticketTotalRevenueAgg._sum.pricePaid ?? 0;
-  const totalRevenue = totalPassRevenue + totalTicketRevenue;
+  // ---------- Gross revenue (in period) ----------
+  // Note: this is GROSS — refunds live in their own line below, so a
+  // pass that was sold this quarter and refunded next quarter shows up
+  // in Q1 gross and Q2 refunds.
+  const grossPassRevenue = passesInPeriod.reduce((s, p) => s + p.price, 0);
+  const grossTicketRevenue = ticketsInPeriod.reduce((s, t) => s + t.pricePaid, 0);
+  const grossTotalRevenue = grossPassRevenue + grossTicketRevenue;
 
-  // Refund totals (informational)
-  const passRefundAmount = refundedPassAgg._sum.price ?? 0;
-  const passRefundCount = refundedPassAgg._count.id ?? 0;
-  const ticketRefundAmount = refundedTicketAgg._sum.pricePaid ?? 0;
-  const ticketRefundCount = refundedTicketAgg._count.id ?? 0;
-  const totalRefundAmount = passRefundAmount + ticketRefundAmount;
-  const totalRefundCount = passRefundCount + ticketRefundCount;
+  const passCount = passesInPeriod.length;
+  const ticketCount = ticketsInPeriod.length;
 
-  // Club payouts from pass scans
+  // ---------- Payouts (in period) ----------
   const clubMap = new Map(clubs.map((c) => [c.id, c]));
+  const museumMap = new Map(museums.map((m) => [m.id, m]));
+
   const totalClubPassPayouts = clubScanCounts.reduce((sum, s) => {
     const club = clubMap.get(s.clubId!);
     return sum + (club ? s._count.id * club.payPerVisit : 0);
   }, 0);
 
-  // Club payouts from validated tickets — apply the pricing formula
-  // per row: either the event's clubTicketFee override, or the default
-  // €10-above-€14 / (price-4)-below formula.
-  const totalClubTicketPayouts = clubPayoutTickets.reduce(
-    (sum, t) => sum + computeClubTicketFee(t.pricePaid, t.event),
-    0
-  );
-
-  const totalClubPayouts = totalClubPassPayouts + totalClubTicketPayouts;
-
-  // Museum payouts
-  const museumMap = new Map(museums.map((m) => [m.id, m]));
   const totalMuseumPayouts = museumScanCounts.reduce((sum, s) => {
     const museum = museumMap.get(s.museumId!);
     return sum + (museum ? s._count.id * museum.payPerVisit : 0);
   }, 0);
 
-  const platformRevenue = totalRevenue - totalClubPayouts - totalMuseumPayouts;
+  // Club payouts from validated tickets: formula per row
+  const totalClubTicketPayouts = clubPayoutTickets.reduce(
+    (sum, t) => sum + computeClubTicketFee(t.pricePaid, t.event),
+    0
+  );
+  const totalClubPayouts = totalClubPassPayouts + totalClubTicketPayouts;
 
-  const stats = [
-    { label: "Total Sales", value: totalSales.toLocaleString() },
-    { label: "Pass Revenue", value: eur.format(totalPassRevenue) },
-    { label: "Ticket Revenue", value: eur.format(totalTicketRevenue) },
-    { label: "Total Revenue", value: eur.format(totalRevenue) },
+  // Reseller commission — computed per-row from the reseller's tier
+  // config. Only counts sales with a valid reseller attribution. Refund
+  // rows get zero commission (reseller doesn't earn on reversed sales).
+  const resellerPassCommission = passesInPeriod.reduce((sum, p) => {
+    if (p.status === "refunded") return sum;
+    if (!p.resellerId) return sum;
+    return sum + resellerCommission(p.price, parseTiers(p.reseller?.passCommissionTiers));
+  }, 0);
+  const resellerTicketCommission = ticketsInPeriod.reduce((sum, t) => {
+    if (t.status === "refunded") return sum;
+    if (!t.resellerId) return sum;
+    return (
+      sum + resellerCommission(t.pricePaid, parseTiers(t.reseller?.ticketCommissionTiers))
+    );
+  }, 0);
+  const totalResellerCommission = resellerPassCommission + resellerTicketCommission;
+
+  // ---------- Fees (in period) ----------
+  const stripeFeePasses = passesInPeriod.reduce(
+    (s, p) => s + (p.stripeFee ?? 0),
+    0
+  );
+  const stripeFeeTickets = ticketsInPeriod.reduce(
+    (s, t) => s + (t.stripeFee ?? 0),
+    0
+  );
+  const totalStripeFees = stripeFeePasses + stripeFeeTickets;
+  const hasNullStripeFees =
+    passesInPeriod.some((p) => p.stripeFee === null) ||
+    ticketsInPeriod.some((t) => t.stripeFee === null);
+
+  // ---------- Refunds (in period by refundedAt) ----------
+  const refundPassAmount = refundedPassesInPeriod.reduce(
+    (s, p) => s + p.price,
+    0
+  );
+  const refundTicketAmount = refundedTicketsInPeriod.reduce(
+    (s, t) => s + t.pricePaid,
+    0
+  );
+  const totalRefunds = refundPassAmount + refundTicketAmount;
+  const refundCount =
+    refundedPassesInPeriod.length + refundedTicketsInPeriod.length;
+
+  // ---------- Platform Net ----------
+  // Formula: gross revenue in period
+  //          minus refunds issued in period
+  //          minus club and museum payouts in period
+  //          minus reseller commission in period
+  //          minus Stripe fees in period
+  const platformNet =
+    grossTotalRevenue -
+    totalRefunds -
+    totalClubPayouts -
+    totalMuseumPayouts -
+    totalResellerCommission -
+    totalStripeFees;
+
+  const periodLabel = formatPeriodLabel(period);
+  const exportParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(plain)) {
+    if (v !== undefined) exportParams.set(k, v);
+  }
+
+  const revenueStats = [
+    { label: `Pass Revenue`, value: eur.format(grossPassRevenue), sub: `${passCount} pass${passCount === 1 ? "" : "es"}` },
+    { label: `Ticket Revenue`, value: eur.format(grossTicketRevenue), sub: `${ticketCount} ticket${ticketCount === 1 ? "" : "s"}` },
+    { label: "Total Revenue", value: eur.format(grossTotalRevenue), sub: "gross" },
+  ];
+
+  const payoutStats = [
     { label: "Club Payouts", value: eur.format(totalClubPayouts) },
     { label: "Museum Payouts", value: eur.format(totalMuseumPayouts) },
-    { label: "Platform Revenue", value: eur.format(platformRevenue) },
+    { label: "Reseller Commission", value: eur.format(totalResellerCommission) },
+  ];
+
+  const feeStats = [
+    {
+      label: "Stripe Fees",
+      value: eur.format(totalStripeFees),
+      sub: hasNullStripeFees ? "partial — older rows have no stored fee" : undefined,
+    },
     {
       label: "Refunds Issued",
-      value: eur.format(totalRefundAmount),
-      sublabel: `${totalRefundCount} refund${totalRefundCount === 1 ? "" : "s"}`,
+      value: eur.format(totalRefunds),
+      sub: `${refundCount} refund${refundCount === 1 ? "" : "s"}`,
       accent: "red" as const,
     },
   ];
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Accounting Dashboard</h1>
-
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-        {stats.map((s) => {
-          const accent =
-            "accent" in s && s.accent === "red"
-              ? "border-red-200 bg-red-50/40"
-              : "border-gray-200 bg-white";
-          const valueColor =
-            "accent" in s && s.accent === "red" ? "text-red-700" : "text-gray-900";
-          const sublabel = "sublabel" in s ? s.sublabel : undefined;
-          return (
-            <div
-              key={s.label}
-              className={`rounded-lg border p-5 ${accent}`}
-            >
-              <p className="text-sm text-gray-500">{s.label}</p>
-              <p className={`text-2xl font-bold mt-1 ${valueColor}`}>
-                {s.value}
-              </p>
-              {sublabel && (
-                <p className="text-xs text-gray-400 mt-1">{sublabel}</p>
-              )}
-            </div>
-          );
-        })}
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Accounting Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Period: {periodLabel}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/api/export/accounting?${exportParams.toString()}`}
+            className="inline-flex items-center gap-1.5 bg-black text-white text-xs font-semibold uppercase tracking-wide px-3 py-2 rounded-md hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Export CSV
+          </Link>
+        </div>
       </div>
+
+      <PeriodSelector choices={standardPeriodChoices()} />
+
+      {/* Revenue */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+          Revenue (gross)
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {revenueStats.map((s) => (
+            <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">{s.label}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p>
+              {s.sub && <p className="text-xs text-gray-400 mt-1">{s.sub}</p>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Payouts */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+          Payouts (out of Volume)
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {payoutStats.map((s) => (
+            <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">{s.label}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Fees + Refunds */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+          Fees and refunds
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {feeStats.map((s) => {
+            const accent =
+              "accent" in s && s.accent === "red"
+                ? "border-red-200 bg-red-50/40"
+                : "border-gray-200 bg-white";
+            const valueColor =
+              "accent" in s && s.accent === "red" ? "text-red-700" : "text-gray-900";
+            return (
+              <div key={s.label} className={`rounded-lg border p-5 ${accent}`}>
+                <p className="text-sm text-gray-500">{s.label}</p>
+                <p className={`text-2xl font-bold mt-1 ${valueColor}`}>{s.value}</p>
+                {s.sub && <p className="text-xs text-gray-400 mt-1">{s.sub}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Platform Net */}
+      <section>
+        <div className="bg-gray-900 text-white rounded-lg p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Platform Net
+          </p>
+          <p className="text-4xl font-extrabold mt-2">{eur.format(platformNet)}</p>
+          <p className="text-xs text-gray-400 mt-3">
+            Gross {eur.format(grossTotalRevenue)} − Refunds {eur.format(totalRefunds)} −
+            Club {eur.format(totalClubPayouts)} − Museum {eur.format(totalMuseumPayouts)} −
+            Reseller {eur.format(totalResellerCommission)} −
+            Stripe {eur.format(totalStripeFees)}
+          </p>
+        </div>
+      </section>
 
       {/* Detail table */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Transaction Details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          Scan detail ({recentScans.length})
+        </h2>
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -220,7 +400,7 @@ export default async function AccountingDashboardPage() {
               {recentScans.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                    No transactions found.
+                    No scans in this period.
                   </td>
                 </tr>
               )}
@@ -228,6 +408,9 @@ export default async function AccountingDashboardPage() {
           </table>
         </div>
       </section>
+
+      {/* Footnote (ref the unused helper to satisfy TS strict) */}
+      <p className="sr-only">{truncateId("")}</p>
     </div>
   );
 }

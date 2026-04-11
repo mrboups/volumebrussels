@@ -1017,7 +1017,7 @@ export async function refundPass(passId: string) {
 
   await db.pass.update({
     where: { id: passId },
-    data: { status: "refunded" },
+    data: { status: "refunded", refundedAt: new Date() },
   });
 
   // Notify customer only if they actually paid money.
@@ -1084,7 +1084,7 @@ export async function refundTicket(ticketId: string) {
 
   await db.ticket.update({
     where: { id: ticketId },
-    data: { status: "refunded" },
+    data: { status: "refunded", refundedAt: new Date() },
   });
 
   if (stripeRefundable && ticket.pricePaid > 0) {

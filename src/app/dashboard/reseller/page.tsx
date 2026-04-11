@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { parseTiers, resellerCommission } from "@/lib/pricing";
 
@@ -149,9 +150,24 @@ export default async function ResellerDashboardPage({
     { label: "Total Fees", value: eur.format(totalFees) },
   ];
 
+  const exportParams = new URLSearchParams();
+  if (token) exportParams.set("token", token);
+  const exportUrl = `/api/export/reseller?${exportParams.toString()}`;
+
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Reseller Dashboard</h1>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">Reseller Dashboard</h1>
+        <Link
+          href={exportUrl}
+          className="inline-flex items-center gap-1.5 bg-black text-white text-xs font-semibold uppercase tracking-wide px-3 py-2 rounded-md hover:bg-gray-800 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+          </svg>
+          Export CSV
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {stats.map((s) => (

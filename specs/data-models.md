@@ -84,11 +84,13 @@ Relations: `passScans`.
 | id | cuid | The public-facing pass URL is `/pass/[id]` — the link is the credential |
 | type | PassType | |
 | price | float | Actual price paid; **0.0** for guest passes and giveaway claims |
+| stripeFee | float? | Fee Stripe charged for this specific pass (in €, not cents). Pulled from `charge.balance_transaction.fee` in the Stripe webhook at purchase time. For multi-pass purchases the total fee is divided equally across the passes. Null for rows created before this field existed, guest passes, giveaway passes, and legacy imports. |
 | userId | ref | Owner |
 | stripePaymentId | string? | Stripe payment intent for paid purchases. Also used as a source marker: `guest_<ts>` for admin-created guest passes, `giveaway_<slug>_<ts>` for passes claimed via a GiveawayForm |
 | status | PassStatus | |
 | activatedAt | datetime? | Set on first club scan |
 | expiresAt | datetime? | Set on first club scan using `computeExpiresAt(type, now)` |
+| refundedAt | datetime? | Set when `status` flips to `refunded` — both via `refundPass` admin action and Stripe's `charge.refunded` webhook. Used for period-accurate accounting: refunds belong to the period in which they happened, not the period the sale happened in. |
 | resellerId | ref? | |
 | formId | ref? | Set when the pass was claimed via a `GiveawayForm`. FK preserves history even if the form is later deleted — delete detaches rather than cascades |
 | createdAt / updatedAt | datetime | |
@@ -137,11 +139,13 @@ Indexes: `clubId`, `date`.
 | eventId | ref | |
 | userId | ref | |
 | stripePaymentId | string? | |
+| stripeFee | float? | Stripe fee in €, same semantics as on `Pass` |
 | status | TicketStatus | |
 | pricePaid | float | Actual price at purchase time |
 | pricingPhase | PricingPhaseName | Which phase was active at purchase |
 | resellerId | ref? | |
 | validatedAt | datetime? | Set when door staff swipes; triggers club ticket revenue |
+| refundedAt | datetime? | Set when `status` flips to `refunded`. Same period-accounting rule as `Pass.refundedAt` |
 | createdAt / updatedAt | datetime | |
 
 Indexes: `eventId`, `userId`, `resellerId`, `status`.

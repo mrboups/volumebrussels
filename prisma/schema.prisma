@@ -120,11 +120,13 @@ model Pass {
   id               String     @id @default(cuid())
   type             PassType
   price            Float
+  stripeFee        Float?     // Fee Stripe charged for this pass (from balance_transaction.fee, € not cents). Null for free / imported rows.
   userId           String
   stripePaymentId  String?
   status           PassStatus @default(purchased)
   activatedAt      DateTime?
   expiresAt        DateTime?
+  refundedAt       DateTime?  // Set when status flips to refunded; used for period-accurate accounting.
   resellerId       String?
   formId           String?
   createdAt        DateTime   @default(now())
@@ -192,11 +194,13 @@ model Ticket {
   eventId          String
   userId           String
   stripePaymentId  String?
+  stripeFee        Float?       // Fee Stripe charged for this ticket (from balance_transaction.fee, € not cents). Null for free / imported rows.
   status           TicketStatus @default(purchased)
   pricePaid        Float
   pricingPhase     PricingPhaseName
   resellerId       String?
   validatedAt      DateTime?
+  refundedAt       DateTime?    // Set when status flips to refunded; used for period-accurate accounting.
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
