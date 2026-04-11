@@ -14,10 +14,16 @@ Legacy €0.50 test prices (`price_1TJNTOHKSMaEcP9CbjAE7NIi` night, `price_1TJNT
 ### Pass lifecycle
 
 1. **`purchased`** — Stripe webhook (`checkout.session.completed`) creates the row after a successful payment. Pass is valid forever in this state.
-2. **`active`** — First club scan sets `activatedAt = now()` and computes `expiresAt` via `computeExpiresAt(type, now)` in `/api/scan/route.ts`. Rules:
-   - Night pass used Friday → expires Saturday at 18:00 Brussels
-   - Night pass used Saturday → expires Sunday at 00:00
-   - Weekend pass → expires Sunday at 23:59 regardless of first-scan day
+2. **`active`** — First club scan sets `activatedAt = now()` and computes `expiresAt` via `computeExpiresAt(type, now)` in `/api/scan/route.ts`. All times are computed in Brussels timezone via `date-fns-tz`, not server-local time.
+
+   **Night pass** — detects which "night" the scan falls in:
+   - **Friday night** = first scan between **Fri 12:00 Brussels and Sat 06:00 Brussels** → expires **Saturday 11:00 Brussels**
+   - **Saturday night** = first scan between **Sat 12:00 Brussels and Sun 06:00 Brussels** → expires **Monday 02:00 Brussels** (allows Sunday night / Monday early-morning after-parties)
+   - Any other time → 24h from scan (fallback; shouldn't happen because clubs are only open Fri / Sat / Sun night)
+
+   **Weekend pass** — always expires **next Monday 02:00 Brussels**, regardless of first-scan day. Covers Fri night + Sat night + Sun night + Monday early-morning after-parties.
+
+   Note: the Saturday-night window deliberately extends to Sun 06:00 so that a customer who scans at Sunday 00:00 (culturally still "Saturday night") is treated correctly. Before this fix, scanning at Sunday 00:00 set `expiresAt` to Sunday 00:00 and the pass was instantly expired.
 3. **`expired`** — Set by `/api/cron` (runs periodically) or inline on a scan attempt when `expiresAt < now`. Museum vouchers survive for 1 week after `activatedAt`.
 4. **`refunded`** — Manual admin action; scans reject.
 

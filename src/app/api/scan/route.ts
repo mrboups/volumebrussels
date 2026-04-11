@@ -1,50 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkSameOrigin, rateLimit } from "@/lib/scanGuard";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
+const BRUSSELS_TZ = "Europe/Brussels";
+
+/**
+ * Build a Brussels-zoned datetime by offsetting the current Brussels
+ * calendar day by a number of days and setting the hour. Returns the
+ * corresponding UTC Date for storage.
+ *
+ * We use date-fns-tz to avoid server-local timezone leakage and to
+ * correctly handle DST boundaries in Brussels.
+ */
+function brusselsTarget(now: Date, addDays: number, targetHour: number): Date {
+  // Today's Brussels calendar day as yyyy-MM-dd
+  const todayStr = formatInTimeZone(now, BRUSSELS_TZ, "yyyy-MM-dd");
+  // Compute the target day string. We use timestamp math on a UTC
+  // representation of Brussels midnight and reformat — that way DST
+  // transitions on the offset day are handled correctly.
+  const brusselsMidnightUtc = fromZonedTime(`${todayStr}T00:00:00`, BRUSSELS_TZ);
+  const offsetUtc = new Date(
+    brusselsMidnightUtc.getTime() + addDays * 24 * 60 * 60 * 1000
+  );
+  const targetDayStr = formatInTimeZone(offsetUtc, BRUSSELS_TZ, "yyyy-MM-dd");
+  const hh = String(targetHour).padStart(2, "0");
+  return fromZonedTime(`${targetDayStr}T${hh}:00:00`, BRUSSELS_TZ);
+}
+
+/**
+ * Pass expiry rules — Brussels time, not server local.
+ *
+ * Night pass
+ *   - First scan during Friday night (Fri 12:00 → Sat 06:00 Brussels)
+ *     → valid until Saturday 11:00 Brussels
+ *   - First scan during Saturday night (Sat 12:00 → Sun 06:00 Brussels)
+ *     → valid until Monday 02:00 Brussels (allows the Sunday night /
+ *       Monday-early-morning after-party)
+ *   - Any other time → 24h from scan (fallback; shouldn't happen in
+ *     practice because clubs are only open Fri / Sat / Sun night).
+ *
+ * Weekend pass
+ *   - Always expires next Monday 02:00 Brussels, regardless of the
+ *     first-scan day. Gives the customer Fri night + Sat night + Sun
+ *     night + Monday early-morning after-parties.
+ */
 function computeExpiresAt(passType: string, now: Date): Date {
-  const day = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  // ISO weekday: Mon=1 .. Sun=7. getDay() is 0..6 in server local.
+  const day = parseInt(formatInTimeZone(now, BRUSSELS_TZ, "i"), 10);
+  const hour = parseInt(formatInTimeZone(now, BRUSSELS_TZ, "H"), 10);
 
   if (passType === "night") {
-    if (day === 5) {
-      // Friday night → Saturday 18:00
-      const expires = new Date(now);
-      expires.setDate(expires.getDate() + 1);
-      expires.setHours(18, 0, 0, 0);
-      return expires;
+    // Saturday night: Sat 12:00 or Sun 00:00-06:00
+    if ((day === 6 && hour >= 12) || (day === 7 && hour < 6)) {
+      const daysUntilMonday = day === 6 ? 2 : 1;
+      return brusselsTarget(now, daysUntilMonday, 2);
     }
-    if (day === 6 || (day === 0 && now.getHours() < 6)) {
-      // Saturday night → Sunday 00:00 (midnight)
-      const expires = new Date(now);
-      if (day === 6) expires.setDate(expires.getDate() + 1);
-      expires.setHours(0, 0, 0, 0);
-      if (day === 6) return expires;
-      // Sunday early morning (after midnight Saturday) → already Sunday
-      expires.setHours(0, 0, 0, 0);
-      return expires;
+    // Friday night: Fri 12:00 or Sat 00:00-06:00
+    if ((day === 5 && hour >= 12) || (day === 6 && hour < 6)) {
+      const daysUntilSaturday = day === 5 ? 1 : 0;
+      return brusselsTarget(now, daysUntilSaturday, 11);
     }
-    // Fallback: next day 18:00
-    const expires = new Date(now);
-    expires.setDate(expires.getDate() + 1);
-    expires.setHours(18, 0, 0, 0);
-    return expires;
+    // Off-hours fallback: give them 24h from now
+    return new Date(now.getTime() + 24 * 60 * 60 * 1000);
   }
 
   if (passType === "weekend") {
-    // Weekend pass always expires Sunday 00:00 (midnight end of Sunday)
-    const daysUntilSunday = (7 - day) % 7;
-    const expires = new Date(now);
-    if (daysUntilSunday === 0 && now.getHours() >= 0) {
-      // Already Sunday → end of today
-      expires.setHours(23, 59, 59, 999);
-      return expires;
+    // Days until the next Monday (Mon=1..Sun=7)
+    let daysUntilMonday = (8 - day) % 7; // 0 when today is Monday
+    if (daysUntilMonday === 0) {
+      // It's Monday. Before 02:00 → use today's 02:00, otherwise push
+      // to next Monday (user bought a weekend pass on Monday, which is
+      // weird but we don't want to return a past date).
+      daysUntilMonday = hour < 2 ? 0 : 7;
     }
-    expires.setDate(expires.getDate() + daysUntilSunday);
-    expires.setHours(23, 59, 59, 999);
-    return expires;
+    return brusselsTarget(now, daysUntilMonday, 2);
   }
 
-  // Fallback: +24h
+  // Unknown pass type fallback
   return new Date(now.getTime() + 24 * 60 * 60 * 1000);
 }
 
