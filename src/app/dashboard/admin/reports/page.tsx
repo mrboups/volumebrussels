@@ -19,7 +19,6 @@ export default async function ReportsPage() {
     id: r.id,
     name: r.user.name || r.user.email,
     email: r.user.email,
-    commissionRate: r.commissionRate,
   }));
 
   return (

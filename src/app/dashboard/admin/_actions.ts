@@ -203,6 +203,12 @@ interface PricingPhaseInput {
   endDate: string;
 }
 
+function parseOptionalFloat(raw: FormDataEntryValue | null): number | null {
+  if (typeof raw !== "string" || raw.trim() === "") return null;
+  const n = parseFloat(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function createEvent(formData: FormData) {
   await requireAdmin();
   const name = formData.get("name") as string;
@@ -212,6 +218,7 @@ export async function createEvent(formData: FormData) {
   const phases: PricingPhaseInput[] = phasesJson ? JSON.parse(phasesJson) : [];
 
   const clubId = formData.get("clubId") as string;
+  const clubTicketFee = parseOptionalFloat(formData.get("clubTicketFee"));
 
   await db.$transaction(async (tx) => {
     const event = await tx.event.create({
@@ -226,6 +233,7 @@ export async function createEvent(formData: FormData) {
         clubId: clubId || null,
         isLinkedToPass: formData.get("isLinkedToPass") === "on",
         isActive: formData.get("isActive") === "on",
+        clubTicketFee,
       },
     });
 
@@ -254,6 +262,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const phases: PricingPhaseInput[] = phasesJson ? JSON.parse(phasesJson) : [];
 
   const clubId = formData.get("clubId") as string;
+  const clubTicketFee = parseOptionalFloat(formData.get("clubTicketFee"));
 
   await db.$transaction(async (tx) => {
     await tx.event.update({
@@ -269,6 +278,7 @@ export async function updateEvent(id: string, formData: FormData) {
         clubId: clubId || null,
         isLinkedToPass: formData.get("isLinkedToPass") === "on",
         isActive: formData.get("isActive") === "on",
+        clubTicketFee,
       },
     });
 
@@ -385,11 +395,25 @@ export async function deleteArticle(id: string) {
 
 // --------------- RESELLERS ---------------
 
+function parseTierJson(raw: FormDataEntryValue | null): unknown {
+  if (typeof raw !== "string" || !raw) {
+    return [{ upTo: null, rate: 0.08 }];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch {
+    // fall through
+  }
+  return [{ upTo: null, rate: 0.08 }];
+}
+
 export async function createReseller(formData: FormData) {
   await requireAdmin();
   const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const commissionRate = parseFloat(formData.get("commissionRate") as string) || 0.08;
+  const email = (formData.get("email") as string).trim().toLowerCase();
+  const passCommissionTiers = parseTierJson(formData.get("passCommissionTiers"));
+  const ticketCommissionTiers = parseTierJson(formData.get("ticketCommissionTiers"));
   const isActive = formData.get("isActive") === "on";
 
   await db.$transaction(async (tx) => {
@@ -403,7 +427,8 @@ export async function createReseller(formData: FormData) {
     await tx.reseller.create({
       data: {
         userId: user.id,
-        commissionRate,
+        passCommissionTiers: passCommissionTiers as never,
+        ticketCommissionTiers: ticketCommissionTiers as never,
         isActive,
       },
     });
@@ -417,8 +442,9 @@ export async function createReseller(formData: FormData) {
 export async function updateReseller(id: string, formData: FormData) {
   await requireAdmin();
   const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const commissionRate = parseFloat(formData.get("commissionRate") as string) || 0.08;
+  const email = (formData.get("email") as string).trim().toLowerCase();
+  const passCommissionTiers = parseTierJson(formData.get("passCommissionTiers"));
+  const ticketCommissionTiers = parseTierJson(formData.get("ticketCommissionTiers"));
   const isActive = formData.get("isActive") === "on";
 
   const reseller = await db.reseller.findUnique({ where: { id }, include: { user: true } });
@@ -431,7 +457,11 @@ export async function updateReseller(id: string, formData: FormData) {
     });
     await tx.reseller.update({
       where: { id },
-      data: { commissionRate, isActive },
+      data: {
+        passCommissionTiers: passCommissionTiers as never,
+        ticketCommissionTiers: ticketCommissionTiers as never,
+        isActive,
+      },
     });
   });
 
@@ -464,30 +494,34 @@ export async function sendClubReport(clubId: string, quarter: number, year: numb
   const startDate = new Date(year, startMonth, 1);
   const endDate = new Date(year, startMonth + 3, 1);
 
-  const [visits, ticketCount, ticketRevAgg] = await Promise.all([
+  const { computeClubTicketFee } = await import("@/lib/pricing");
+
+  const [visits, quarterTickets] = await Promise.all([
     db.passScan.count({
       where: {
         clubId,
         scannedAt: { gte: startDate, lt: endDate },
       },
     }),
-    db.ticket.count({
+    db.ticket.findMany({
       where: {
         validatedAt: { gte: startDate, lt: endDate, not: null },
         event: { clubId },
       },
-    }),
-    db.ticket.aggregate({
-      where: {
-        validatedAt: { gte: startDate, lt: endDate, not: null },
-        event: { clubId },
+      select: {
+        pricePaid: true,
+        event: { select: { clubTicketFee: true } },
       },
-      _sum: { pricePaid: true },
     }),
   ]);
 
+  const ticketCount = quarterTickets.length;
+  const ticketRevenue = quarterTickets.reduce(
+    (sum, t) => sum + computeClubTicketFee(t.pricePaid, t.event),
+    0
+  );
+
   const passRevenue = visits * club.payPerVisit;
-  const ticketRevenue = ticketRevAgg._sum.pricePaid ?? 0;
   const revenue = passRevenue + ticketRevenue;
   const quarterLabels: Record<number, string> = {
     1: "January to March",
@@ -595,18 +629,46 @@ export async function sendResellerReport(resellerId: string, half: number, year:
   const startDate = new Date(year, startMonth, 1);
   const endDate = new Date(year, startMonth + 6, 1);
 
-  const passes = await db.pass.findMany({
-    where: {
-      resellerId,
-      createdAt: { gte: startDate, lt: endDate },
-      // Refunded sales are reversed — no commission owed on them.
-      status: { not: "refunded" },
-    },
-  });
+  const { parseTiers, resellerCommission } = await import("@/lib/pricing");
+  const passTiers = parseTiers(reseller.passCommissionTiers);
+  const ticketTiers = parseTiers(reseller.ticketCommissionTiers);
 
-  const salesCount = passes.length;
-  const salesAmount = passes.reduce((sum, p) => sum + p.price, 0);
-  const commission = salesAmount * reseller.commissionRate;
+  const [passes, tickets] = await Promise.all([
+    db.pass.findMany({
+      where: {
+        resellerId,
+        createdAt: { gte: startDate, lt: endDate },
+        // Refunded sales are reversed — no commission owed on them.
+        status: { not: "refunded" },
+      },
+      select: { price: true },
+    }),
+    db.ticket.findMany({
+      where: {
+        resellerId,
+        createdAt: { gte: startDate, lt: endDate },
+        status: { not: "refunded" },
+      },
+      select: { pricePaid: true },
+    }),
+  ]);
+
+  const passSalesCount = passes.length;
+  const passSalesAmount = passes.reduce((sum, p) => sum + p.price, 0);
+  const passCommission = passes.reduce(
+    (sum, p) => sum + resellerCommission(p.price, passTiers),
+    0
+  );
+  const ticketSalesCount = tickets.length;
+  const ticketSalesAmount = tickets.reduce((sum, t) => sum + t.pricePaid, 0);
+  const ticketCommission = tickets.reduce(
+    (sum, t) => sum + resellerCommission(t.pricePaid, ticketTiers),
+    0
+  );
+
+  const salesCount = passSalesCount + ticketSalesCount;
+  const salesAmount = passSalesAmount + ticketSalesAmount;
+  const commission = passCommission + ticketCommission;
 
   const halfLabel = half === 1 ? "January to June" : "July to December";
   const periodLabel = `H${half} ${year} — ${halfLabel}`;
@@ -650,8 +712,16 @@ export async function sendResellerReport(resellerId: string, half: number, year:
                         <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(salesAmount)}</td>
                       </tr>
                       <tr>
-                        <td style="padding:12px 0 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Commission Due (${(reseller.commissionRate * 100).toFixed(0)}%)</td>
-                        <td style="padding:12px 0 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(commission)}</td>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Pass commission</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(passCommission)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Ticket commission</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(ticketCommission)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0 0;font-size:13px;color:#18181b;text-transform:uppercase;letter-spacing:0.5px;border-top:2px solid #18181b;font-weight:700;">Total commission due</td>
+                        <td style="padding:12px 0 0;font-size:16px;color:#18181b;font-weight:800;text-align:right;border-top:2px solid #18181b;">${eurFmt.format(commission)}</td>
                       </tr>
                     </table>
                   </td>

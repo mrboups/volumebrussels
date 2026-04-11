@@ -1,10 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import TierEditor from "./TierEditor";
+import type { CommissionTier } from "@/lib/pricing";
+import { parseTiers } from "@/lib/pricing";
+
 interface ResellerData {
   id?: string;
   name: string;
   email: string;
-  commissionRate: number;
+  passCommissionTiers: unknown;
+  ticketCommissionTiers: unknown;
   isActive: boolean;
 }
 
@@ -15,8 +21,21 @@ export default function ResellerForm({
   reseller?: ResellerData;
   action: (formData: FormData) => Promise<void>;
 }) {
+  const [passTiers, setPassTiers] = useState<CommissionTier[]>(() =>
+    parseTiers(reseller?.passCommissionTiers)
+  );
+  const [ticketTiers, setTicketTiers] = useState<CommissionTier[]>(() =>
+    parseTiers(reseller?.ticketCommissionTiers)
+  );
+
+  function handleSubmit(formData: FormData) {
+    formData.set("passCommissionTiers", JSON.stringify(passTiers));
+    formData.set("ticketCommissionTiers", JSON.stringify(ticketTiers));
+    return action(formData);
+  }
+
   return (
-    <form action={action} className="space-y-6 max-w-2xl">
+    <form action={handleSubmit} className="space-y-6 max-w-2xl">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -39,19 +58,19 @@ export default function ResellerForm({
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Commission Rate</label>
-        <input
-          name="commissionRate"
-          type="number"
-          step="0.01"
-          min="0"
-          max="1"
-          defaultValue={reseller?.commissionRate ?? 0.08}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-black focus:border-black max-w-xs"
-        />
-        <p className="text-xs text-gray-400 mt-1">e.g. 0.08 = 8%</p>
-      </div>
+      <TierEditor
+        label="Pass commission"
+        helper="How much this reseller earns on every pass they sell. Add tiers for price-based rates, e.g. 8% below €30, 4% above."
+        tiers={passTiers}
+        onChange={setPassTiers}
+      />
+
+      <TierEditor
+        label="Ticket commission"
+        helper="How much this reseller earns on every ticket they sell. Same tier logic as passes."
+        tiers={ticketTiers}
+        onChange={setTicketTiers}
+      />
 
       <div>
         <label className="flex items-center gap-2 text-sm text-gray-700">

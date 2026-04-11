@@ -3,8 +3,22 @@ import Link from "next/link";
 import { deleteReseller } from "../_actions";
 import DeleteButton from "../_components/DeleteButton";
 import MagicLinkButton from "../_components/MagicLinkButton";
+import { parseTiers } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
+
+function summarizeTiers(raw: unknown): string {
+  const tiers = parseTiers(raw);
+  if (tiers.length === 1) return `${(tiers[0].rate * 100).toFixed(1)}%`;
+  return tiers
+    .map((t, i) => {
+      const rate = `${(t.rate * 100).toFixed(1)}%`;
+      if (t.upTo === null) return `then ${rate}`;
+      if (i === 0) return `≤€${t.upTo}: ${rate}`;
+      return `≤€${t.upTo}: ${rate}`;
+    })
+    .join(", ");
+}
 
 export default async function ResellersPage() {
   const resellers = await db.reseller.findMany({
@@ -30,7 +44,8 @@ export default async function ResellersPage() {
             <tr className="border-b border-gray-100 text-left text-gray-500">
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Commission</th>
+              <th className="px-4 py-3 font-medium">Pass commission</th>
+              <th className="px-4 py-3 font-medium">Ticket commission</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Magic Link</th>
               <th className="px-4 py-3 font-medium">Actions</th>
@@ -41,7 +56,12 @@ export default async function ResellersPage() {
               <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{r.user.name || "-"}</td>
                 <td className="px-4 py-3 text-gray-600">{r.user.email}</td>
-                <td className="px-4 py-3 text-gray-600">{(r.commissionRate * 100).toFixed(0)}%</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {summarizeTiers(r.passCommissionTiers)}
+                </td>
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {summarizeTiers(r.ticketCommissionTiers)}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
@@ -71,7 +91,7 @@ export default async function ResellersPage() {
             ))}
             {resellers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                   No resellers found.
                 </td>
               </tr>

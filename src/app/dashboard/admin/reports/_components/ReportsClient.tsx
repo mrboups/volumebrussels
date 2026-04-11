@@ -15,7 +15,6 @@ interface ResellerData {
   id: string;
   name: string;
   email: string;
-  commissionRate: number;
 }
 
 interface ClubReportRow {

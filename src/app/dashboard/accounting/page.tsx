@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { computeClubTicketFee } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function AccountingDashboardPage() {
     museumScanCounts,
     recentScans,
     ticketTotalRevenueAgg,
-    ticketClubPayoutAgg,
+    clubPayoutTickets,
     refundedPassAgg,
     refundedTicketAgg,
   ] = await Promise.all([
@@ -66,10 +67,16 @@ export default async function AccountingDashboardPage() {
     // Club ticket payout — intentionally does NOT exclude refunded
     // tickets. Once a ticket has been validated at the door the club
     // earned that money; a later refund is absorbed by Volume, not
-    // clawed back from the club.
-    db.ticket.aggregate({
+    // clawed back from the club. Fetched as a list rather than an
+    // aggregate because the per-ticket amount comes from
+    // computeClubTicketFee() (price-dependent formula plus optional
+    // per-event override), not from a DB column.
+    db.ticket.findMany({
       where: { validatedAt: { not: null }, event: { clubId: { not: null } } },
-      _sum: { pricePaid: true },
+      select: {
+        pricePaid: true,
+        event: { select: { clubTicketFee: true } },
+      },
     }),
     // Refund totals — informational, for the "Refunds Issued" card.
     // These are rows where status = "refunded" and represent money
@@ -108,8 +115,13 @@ export default async function AccountingDashboardPage() {
     return sum + (club ? s._count.id * club.payPerVisit : 0);
   }, 0);
 
-  // Club payouts from validated tickets (100% of pricePaid goes to club)
-  const totalClubTicketPayouts = ticketClubPayoutAgg._sum.pricePaid ?? 0;
+  // Club payouts from validated tickets — apply the pricing formula
+  // per row: either the event's clubTicketFee override, or the default
+  // €10-above-€14 / (price-4)-below formula.
+  const totalClubTicketPayouts = clubPayoutTickets.reduce(
+    (sum, t) => sum + computeClubTicketFee(t.pricePaid, t.event),
+    0
+  );
 
   const totalClubPayouts = totalClubPassPayouts + totalClubTicketPayouts;
 

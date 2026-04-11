@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { computeClubTicketFee } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -69,10 +70,7 @@ export default async function ClubDashboardPage({
     visitsThisMonth,
     visitsAllTime,
     recentScans,
-    ticketsThisMonth,
-    ticketsAllTime,
-    ticketRevenueThisMonthAgg,
-    ticketRevenueAllTimeAgg,
+    allValidatedTickets,
     recentValidatedTickets,
   ] = await Promise.all([
     db.club.findMany({ where: clubWhere, orderBy: { sortOrder: "asc" } }),
@@ -89,17 +87,19 @@ export default async function ClubDashboardPage({
         pass: { select: { type: true } },
       },
     }),
-    db.ticket.count({
-      where: { ...validatedTicketClubWhere, validatedAt: { gte: startOfMonth } },
-    }),
-    db.ticket.count({ where: validatedTicketClubWhere }),
-    db.ticket.aggregate({
-      where: { ...validatedTicketClubWhere, validatedAt: { gte: startOfMonth } },
-      _sum: { pricePaid: true },
-    }),
-    db.ticket.aggregate({
+    // Fetch every validated ticket in scope and compute per-ticket club
+    // retribution in memory. Can't use aggregate() because the per-row
+    // amount is computeClubTicketFee(pricePaid, event.clubTicketFee),
+    // not a plain column sum.
+    db.ticket.findMany({
       where: validatedTicketClubWhere,
-      _sum: { pricePaid: true },
+      select: {
+        pricePaid: true,
+        validatedAt: true,
+        event: {
+          select: { clubId: true, clubTicketFee: true },
+        },
+      },
     }),
     db.ticket.findMany({
       take: 50,
@@ -117,10 +117,49 @@ export default async function ClubDashboardPage({
     }),
   ]);
 
-  const ticketRevenueThisMonth = ticketRevenueThisMonthAgg._sum.pricePaid ?? 0;
-  const ticketRevenueAllTime = ticketRevenueAllTimeAgg._sum.pricePaid ?? 0;
+  // Derive all the ticket revenue numbers from one fetched list. Each
+  // ticket's contribution is computeClubTicketFee(pricePaid, event).
+  let ticketsAllTime = 0;
+  let ticketsThisMonth = 0;
+  let ticketRevenueAllTime = 0;
+  let ticketRevenueThisMonth = 0;
+  const ticketRevenueAllTimeByClub = new Map<
+    string,
+    { count: number; revenue: number }
+  >();
+  const ticketRevenueMonthByClub = new Map<
+    string,
+    { count: number; revenue: number }
+  >();
+  for (const t of allValidatedTickets) {
+    const fee = computeClubTicketFee(t.pricePaid, t.event);
+    const isThisMonth = t.validatedAt !== null && t.validatedAt >= startOfMonth;
+    ticketsAllTime += 1;
+    ticketRevenueAllTime += fee;
+    if (isThisMonth) {
+      ticketsThisMonth += 1;
+      ticketRevenueThisMonth += fee;
+    }
+    const cid = t.event?.clubId;
+    if (cid) {
+      const allPrev = ticketRevenueAllTimeByClub.get(cid) ?? { count: 0, revenue: 0 };
+      ticketRevenueAllTimeByClub.set(cid, {
+        count: allPrev.count + 1,
+        revenue: allPrev.revenue + fee,
+      });
+      if (isThisMonth) {
+        const monthPrev = ticketRevenueMonthByClub.get(cid) ?? { count: 0, revenue: 0 };
+        ticketRevenueMonthByClub.set(cid, {
+          count: monthPrev.count + 1,
+          revenue: monthPrev.revenue + fee,
+        });
+      }
+    }
+  }
 
-  // Revenue by club: we need scans-per-club this month
+  // Revenue by club: scan counts for the pass payout side (scan-based).
+  // Ticket revenue maps are already populated above from the single
+  // allValidatedTickets fetch.
   const clubScanCounts = await db.passScan.groupBy({
     by: ["clubId"],
     where: scanClubFilter,
@@ -134,57 +173,6 @@ export default async function ClubDashboardPage({
   });
 
   const clubMap = new Map(clubs.map((c) => [c.id, c]));
-
-  // Ticket revenue grouped by club (validated only) — both all-time and this month.
-  const [ticketStatsByClubAllTime, ticketStatsByClubThisMonth] = await Promise.all([
-    db.ticket.groupBy({
-      by: ["eventId"],
-      where: validatedTicketClubWhere,
-      _count: { id: true },
-      _sum: { pricePaid: true },
-    }),
-    db.ticket.groupBy({
-      by: ["eventId"],
-      where: { ...validatedTicketClubWhere, validatedAt: { gte: startOfMonth } },
-      _count: { id: true },
-      _sum: { pricePaid: true },
-    }),
-  ]);
-
-  const eventIds = Array.from(
-    new Set(
-      [...ticketStatsByClubAllTime, ...ticketStatsByClubThisMonth].map((r) => r.eventId)
-    )
-  );
-  const eventsForClub = eventIds.length
-    ? await db.event.findMany({
-        where: { id: { in: eventIds } },
-        select: { id: true, clubId: true },
-      })
-    : [];
-  const eventClubMap = new Map(eventsForClub.map((e) => [e.id, e.clubId]));
-
-  // Aggregate ticket revenue back to clubId
-  const ticketRevenueAllTimeByClub = new Map<string, { count: number; revenue: number }>();
-  for (const row of ticketStatsByClubAllTime) {
-    const cid = eventClubMap.get(row.eventId);
-    if (!cid) continue;
-    const prev = ticketRevenueAllTimeByClub.get(cid) ?? { count: 0, revenue: 0 };
-    ticketRevenueAllTimeByClub.set(cid, {
-      count: prev.count + row._count.id,
-      revenue: prev.revenue + (row._sum.pricePaid ?? 0),
-    });
-  }
-  const ticketRevenueMonthByClub = new Map<string, { count: number; revenue: number }>();
-  for (const row of ticketStatsByClubThisMonth) {
-    const cid = eventClubMap.get(row.eventId);
-    if (!cid) continue;
-    const prev = ticketRevenueMonthByClub.get(cid) ?? { count: 0, revenue: 0 };
-    ticketRevenueMonthByClub.set(cid, {
-      count: prev.count + row._count.id,
-      revenue: prev.revenue + (row._sum.pricePaid ?? 0),
-    });
-  }
 
   const revenueByClub = clubs.map((club) => {
     const allTime = clubScanCounts.find((s) => s.clubId === club.id)?._count.id ?? 0;
@@ -211,25 +199,24 @@ export default async function ClubDashboardPage({
       const startDate = new Date(year, startMonth, 1);
       const endDate = new Date(year, startMonth + 3, 1);
 
-      const [visits, ticketCount, ticketRevAgg] = await Promise.all([
+      const [visits, quarterTickets] = await Promise.all([
         db.passScan.count({
           where: {
             ...scanClubFilter,
             scannedAt: { gte: startDate, lt: endDate },
           },
         }),
-        db.ticket.count({
+        // Fetch the raw validated tickets for this quarter and compute
+        // per-ticket fees via computeClubTicketFee.
+        db.ticket.findMany({
           where: {
             ...validatedTicketClubWhere,
             validatedAt: { gte: startDate, lt: endDate },
           },
-        }),
-        db.ticket.aggregate({
-          where: {
-            ...validatedTicketClubWhere,
-            validatedAt: { gte: startDate, lt: endDate },
+          select: {
+            pricePaid: true,
+            event: { select: { clubTicketFee: true } },
           },
-          _sum: { pricePaid: true },
         }),
       ]);
 
@@ -238,7 +225,11 @@ export default async function ClubDashboardPage({
         ? clubs.reduce((sum, c) => sum + c.payPerVisit, 0) / clubs.length
         : 10;
       const passRevenue = visits * avgRate;
-      const ticketRevenue = ticketRevAgg._sum.pricePaid ?? 0;
+      const ticketCount = quarterTickets.length;
+      const ticketRevenue = quarterTickets.reduce(
+        (sum, t) => sum + computeClubTicketFee(t.pricePaid, t.event),
+        0
+      );
 
       return {
         label,

@@ -172,6 +172,10 @@ model Event {
   isLinkedToPass Boolean  @default(false)
   isActive       Boolean  @default(true)
   salesEnded     Boolean  @default(false)
+  // Optional override for the club's per-ticket retribution. When null,
+  // the default formula applies (see src/lib/pricing.ts): €10 flat for
+  // tickets priced ≥ €14, otherwise max(0, pricePaid − 4).
+  clubTicketFee  Float?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -220,13 +224,19 @@ model PricingPhase {
 }
 
 model Reseller {
-  id             String  @id @default(cuid())
-  userId         String  @unique
-  commissionRate Float   @default(0.08)
-  magicLinkToken String? @unique
-  isActive       Boolean @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  // Commission tier arrays stored as JSON. Shape:
+  //   [{ upTo: number | null, rate: number }, ...]
+  // upTo=null means "and above" (open-ended) and must be the last tier.
+  // Match rule is non-marginal: the whole sale price uses the first
+  // tier where price <= upTo. See src/lib/pricing.ts.
+  passCommissionTiers   Json    @default("[{\"upTo\":null,\"rate\":0.08}]")
+  ticketCommissionTiers Json    @default("[{\"upTo\":null,\"rate\":0.08}]")
+  magicLinkToken        String? @unique
+  isActive              Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user    User     @relation(fields: [userId], references: [id])
   passes  Pass[]

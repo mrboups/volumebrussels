@@ -23,7 +23,8 @@ export default async function EditResellerPage({ params }: { params: Promise<{ i
           id: reseller.id,
           name: reseller.user.name || "",
           email: reseller.user.email,
-          commissionRate: reseller.commissionRate,
+          passCommissionTiers: reseller.passCommissionTiers,
+          ticketCommissionTiers: reseller.ticketCommissionTiers,
           isActive: reseller.isActive,
         }}
         action={updateAction}

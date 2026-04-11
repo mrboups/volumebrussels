@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { parseTiers, resellerCommission } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -40,27 +41,55 @@ export default async function ResellerDashboardPage({
     });
   }
 
-  const resellerPasses = await db.pass.findMany({
-    where: resellerFilter.resellerId
-      ? { resellerId: resellerFilter.resellerId }
-      : { resellerId: { not: null } },
-    orderBy: { createdAt: "desc" },
-    include: {
-      user: { select: { email: true } },
-      reseller: { select: { commissionRate: true } },
-    },
-  });
+  const [resellerPasses, resellerTickets] = await Promise.all([
+    db.pass.findMany({
+      where: resellerFilter.resellerId
+        ? { resellerId: resellerFilter.resellerId }
+        : { resellerId: { not: null } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { email: true } },
+        reseller: {
+          select: { passCommissionTiers: true },
+        },
+      },
+    }),
+    db.ticket.findMany({
+      where: resellerFilter.resellerId
+        ? { resellerId: resellerFilter.resellerId }
+        : { resellerId: { not: null } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { email: true } },
+        event: { select: { name: true } },
+        reseller: {
+          select: { ticketCommissionTiers: true },
+        },
+      },
+    }),
+  ]);
 
-  // Refunded passes stay visible in the table (with their refunded
-  // status badge) so the reseller can see what happened, but they are
-  // excluded from the totals and commission: a refund reverses the
-  // sale and the associated commission.
+  // Refunded rows stay visible in the tables (with their refunded badge)
+  // so the reseller can see what happened, but they are excluded from
+  // totals and commission — refunds reverse the sale and commission.
   const billablePasses = resellerPasses.filter((p) => p.status !== "refunded");
-  const totalSales = billablePasses.length;
-  const totalFees = billablePasses.reduce(
-    (sum, p) => sum + p.price * (p.reseller?.commissionRate ?? 0.08),
+  const billableTickets = resellerTickets.filter((t) => t.status !== "refunded");
+
+  const totalPassSales = billablePasses.length;
+  const totalPassFees = billablePasses.reduce(
+    (sum, p) =>
+      sum + resellerCommission(p.price, parseTiers(p.reseller?.passCommissionTiers)),
     0
   );
+  const totalTicketSales = billableTickets.length;
+  const totalTicketFees = billableTickets.reduce(
+    (sum, t) =>
+      sum +
+      resellerCommission(t.pricePaid, parseTiers(t.reseller?.ticketCommissionTiers)),
+    0
+  );
+  const totalSales = totalPassSales + totalTicketSales;
+  const totalFees = totalPassFees + totalTicketFees;
 
   // Calculate half-year report data
   const resellerId = resellerFilter.resellerId;
@@ -70,22 +99,48 @@ export default async function ResellerDashboardPage({
       const startDate = new Date(year, startMonth, 1);
       const endDate = new Date(year, startMonth + 6, 1);
 
-      const passes = await db.pass.findMany({
-        where: {
-          ...(resellerId ? { resellerId } : { resellerId: { not: null } }),
-          createdAt: { gte: startDate, lt: endDate },
-          status: { not: "refunded" },
-        },
-        select: { price: true, reseller: { select: { commissionRate: true } } },
-      });
+      const [passes, tickets] = await Promise.all([
+        db.pass.findMany({
+          where: {
+            ...(resellerId ? { resellerId } : { resellerId: { not: null } }),
+            createdAt: { gte: startDate, lt: endDate },
+            status: { not: "refunded" },
+          },
+          select: {
+            price: true,
+            reseller: { select: { passCommissionTiers: true } },
+          },
+        }),
+        db.ticket.findMany({
+          where: {
+            ...(resellerId ? { resellerId } : { resellerId: { not: null } }),
+            createdAt: { gte: startDate, lt: endDate },
+            status: { not: "refunded" },
+          },
+          select: {
+            pricePaid: true,
+            reseller: { select: { ticketCommissionTiers: true } },
+          },
+        }),
+      ]);
 
-      const salesCount = passes.length;
-      const commission = passes.reduce(
-        (sum, p) => sum + p.price * (p.reseller?.commissionRate ?? 0.08),
+      const passCommission = passes.reduce(
+        (sum, p) =>
+          sum + resellerCommission(p.price, parseTiers(p.reseller?.passCommissionTiers)),
+        0
+      );
+      const ticketCommission = tickets.reduce(
+        (sum, t) =>
+          sum +
+          resellerCommission(t.pricePaid, parseTiers(t.reseller?.ticketCommissionTiers)),
         0
       );
 
-      return { label, salesCount, commission };
+      return {
+        label,
+        salesCount: passes.length + tickets.length,
+        commission: passCommission + ticketCommission,
+      };
     })
   );
 
@@ -108,7 +163,7 @@ export default async function ResellerDashboardPage({
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Detail</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Pass sales</h2>
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -116,13 +171,18 @@ export default async function ResellerDashboardPage({
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Pass Type</th>
                 <th className="px-4 py-3 font-medium">Price</th>
-                <th className="px-4 py-3 font-medium">Fee (8%)</th>
+                <th className="px-4 py-3 font-medium">Commission</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
               </tr>
             </thead>
             <tbody>
               {resellerPasses.map((p) => {
-                const rate = p.reseller?.commissionRate ?? 0.08;
+                const tiers = parseTiers(p.reseller?.passCommissionTiers);
+                const fee =
+                  p.status === "refunded"
+                    ? 0
+                    : resellerCommission(p.price, tiers);
                 return (
                   <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600">
@@ -134,15 +194,98 @@ export default async function ResellerDashboardPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{eur.format(p.price)}</td>
-                    <td className="px-4 py-3 text-gray-600">{eur.format(p.price * rate)}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {p.status === "refunded" ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        eur.format(fee)
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                          p.status === "refunded"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-blue-50 text-blue-700"
+                        }`}
+                      >
+                        {p.status}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{p.user.email}</td>
                   </tr>
                 );
               })}
               {resellerPasses.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                    No reseller sales found.
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                    No reseller pass sales.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Ticket sales</h2>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-gray-500">
+                <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Event</th>
+                <th className="px-4 py-3 font-medium">Price</th>
+                <th className="px-4 py-3 font-medium">Commission</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Customer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resellerTickets.map((t) => {
+                const tiers = parseTiers(t.reseller?.ticketCommissionTiers);
+                const fee =
+                  t.status === "refunded"
+                    ? 0
+                    : resellerCommission(t.pricePaid, tiers);
+                return (
+                  <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.createdAt.toLocaleDateString("fr-BE")}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {t.event.name}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {eur.format(t.pricePaid)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.status === "refunded" ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        eur.format(fee)
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                          t.status === "refunded"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-blue-50 text-blue-700"
+                        }`}
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{t.user.email}</td>
+                  </tr>
+                );
+              })}
+              {resellerTickets.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                    No reseller ticket sales.
                   </td>
                 </tr>
               )}

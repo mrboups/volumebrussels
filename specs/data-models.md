@@ -123,6 +123,7 @@ Indexes: `passId`, `clubId`, `museumId`.
 | isLinkedToPass | boolean | If true, Weekend Pass holders enter free |
 | isActive | boolean | Soft delete; events with tickets sold are always soft-deleted to preserve history |
 | salesEnded | boolean | Manually halts new purchases while keeping the event visible |
+| clubTicketFee | float? | Optional override for the club's per-ticket retribution. When set, overrides the default `computeClubTicketFee` formula for every validated ticket of this event. Useful for special events with a negotiated flat fee. |
 | createdAt / updatedAt | datetime | |
 
 Relations: `club`, `tickets`, `pricingPhases`.
@@ -164,9 +165,12 @@ Event form auto-chains phases: when phase N+1 starts before phase N ends, phase 
 |---|---|---|
 | id | cuid | |
 | userId | ref | Unique |
-| commissionRate | float | Default 0.08 |
+| passCommissionTiers | Json | Array of `{ upTo: number \| null, rate: number }` — first-match tier-based commission on passes. Default `[{ upTo: null, rate: 0.08 }]` (flat 8%). |
+| ticketCommissionTiers | Json | Same shape as above — commission on tickets, independent from passes. |
 | magicLinkToken | string? | Unique, cryptographically random; **never auto-expires**, only overwritten on manual regeneration |
 | isActive | boolean | |
+
+Commission is non-marginal: the whole sale price multiplies by the matched tier's rate. See `src/lib/pricing.ts → resellerCommission` for the implementation. Example: tiers `[{upTo:20,rate:0.08},{upTo:null,rate:0.04}]` → €15 ticket earns €1.20 (8%), €25 ticket earns €1.00 (4%).
 
 Relations: `user`, `passes`, `tickets`.
 

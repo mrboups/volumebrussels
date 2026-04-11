@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { isAdminRequest } from "@/lib/session";
+import { parseTiers, resellerCommission } from "@/lib/pricing";
 
 export async function GET(req: NextRequest) {
   if (!(await isAdminRequest())) {
@@ -20,19 +21,38 @@ export async function GET(req: NextRequest) {
 
   const result = await Promise.all(
     resellers.map(async (r) => {
-      const passes = await db.pass.findMany({
-        where: {
-          resellerId: r.id,
-          createdAt: { gte: startDate, lt: endDate },
-          // Refunded sales are reversed — no commission.
-          status: { not: "refunded" },
-        },
-        select: { price: true },
-      });
+      const passTiers = parseTiers(r.passCommissionTiers);
+      const ticketTiers = parseTiers(r.ticketCommissionTiers);
 
-      const salesCount = passes.length;
-      const salesAmount = passes.reduce((sum, p) => sum + p.price, 0);
-      const commission = salesAmount * r.commissionRate;
+      const [passes, tickets] = await Promise.all([
+        db.pass.findMany({
+          where: {
+            resellerId: r.id,
+            createdAt: { gte: startDate, lt: endDate },
+            status: { not: "refunded" },
+          },
+          select: { price: true },
+        }),
+        db.ticket.findMany({
+          where: {
+            resellerId: r.id,
+            createdAt: { gte: startDate, lt: endDate },
+            status: { not: "refunded" },
+          },
+          select: { pricePaid: true },
+        }),
+      ]);
+
+      const salesCount = passes.length + tickets.length;
+      const salesAmount =
+        passes.reduce((s, p) => s + p.price, 0) +
+        tickets.reduce((s, t) => s + t.pricePaid, 0);
+      const commission =
+        passes.reduce((s, p) => s + resellerCommission(p.price, passTiers), 0) +
+        tickets.reduce(
+          (s, t) => s + resellerCommission(t.pricePaid, ticketTiers),
+          0
+        );
 
       return {
         resellerId: r.id,

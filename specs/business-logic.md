@@ -116,7 +116,77 @@ Pages under `/dashboard/club` detect a magic link (`?token=...`) in the URL; if 
 
 ## Reseller referrals
 
-Reseller link format: `/buy-ticket?ref=[resellerId]`. The `resellerId` is attached to the Stripe session metadata and the created `Pass`/`Ticket`. Commission: `commissionRate * price` (default 8%). Half-year reports (`sendResellerReport`) email a breakdown to the reseller contact.
+Reseller link format: `/buy-ticket?ref=[resellerId]`. The `resellerId` is attached to the Stripe session metadata and the created `Pass` / `Ticket`.
+
+### Commission model
+
+Each reseller has **independent** commission tiers for passes and tickets,
+stored as JSON arrays on `Reseller.passCommissionTiers` and
+`Reseller.ticketCommissionTiers`. Shape:
+
+```
+[
+  { upTo: number | null, rate: number },
+  { upTo: number | null, rate: number },
+  ...
+]
+```
+
+- `upTo` is the inclusive upper bound of the tier in euros. `null` marks
+  the last, open-ended tier.
+- `rate` is the commission fraction, e.g. `0.08` = 8%.
+- The whole sale price is multiplied by the **first** tier where
+  `price <= upTo` (non-marginal).
+- Default for new resellers: single flat 8% tier.
+
+**Example** — ticket tiers `[{upTo: 20, rate: 0.08}, {upTo: null, rate: 0.04}]`:
+
+| Ticket price | Matching tier | Commission |
+|---|---|---|
+| €15 | `upTo: 20` | €15 × 8% = €1.20 |
+| €20 | `upTo: 20` | €20 × 8% = €1.60 |
+| €25 | `upTo: null` | €25 × 4% = €1.00 |
+
+Implementation in `src/lib/pricing.ts → resellerCommission`.
+
+### Half-year reports
+
+`sendResellerReport` and `/api/reports/send-reseller` email a breakdown
+to the reseller contact showing **pass commission, ticket commission,
+and total** separately. Refunded rows are excluded from commission
+calculations.
+
+## Club ticket retribution formula
+
+When a ticket is validated at the door, the club earns a share of the
+ticket price. The formula in `src/lib/pricing.ts → computeClubTicketFee`:
+
+1. If `Event.clubTicketFee` is set → use that fixed value.
+2. Otherwise if `pricePaid >= 14` → club earns **€10**.
+3. Otherwise → club earns `max(0, pricePaid − 4)`.
+
+**Examples** with the default formula:
+
+| Ticket price | Club retribution |
+|---|---|
+| €30 | €10 |
+| €20 | €10 |
+| €14 | €10 |
+| €10 | €6 (10 − 4) |
+| €5 | €1 (5 − 4) |
+| €3 | €0 (clamped) |
+
+Admin can override the formula per event via the optional
+`Club retribution per ticket` field in the event form. That fixed value
+is used for every validated ticket of that event regardless of the
+ticket's price.
+
+**Accounting impact**: aggregations that used to do
+`ticket.aggregate({ _sum: { pricePaid } })` no longer work for the club
+payout side because the per-row amount is a formula, not a column. Every
+affected surface (`/dashboard/accounting`, `/dashboard/club` current and
+per-quarter views, `sendClubReport` email) now does
+`findMany` + in-memory reduce through `computeClubTicketFee`.
 
 ## Financial model summary
 

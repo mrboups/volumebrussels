@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getResend, FROM_EMAIL } from "@/lib/email";
 import { isAdminRequest } from "@/lib/session";
+import { parseTiers, resellerCommission } from "@/lib/pricing";
 
 export async function POST(req: NextRequest) {
   if (!(await isAdminRequest())) {
@@ -19,17 +20,41 @@ export async function POST(req: NextRequest) {
   const startDate = new Date(year, startMonth, 1);
   const endDate = new Date(year, startMonth + 6, 1);
 
-  const passes = await db.pass.findMany({
-    where: {
-      resellerId,
-      createdAt: { gte: startDate, lt: endDate },
-    },
-    select: { price: true },
-  });
+  const passTiers = parseTiers(reseller.passCommissionTiers);
+  const ticketTiers = parseTiers(reseller.ticketCommissionTiers);
 
-  const salesCount = passes.length;
-  const salesAmount = passes.reduce((sum, p) => sum + p.price, 0);
-  const commission = salesAmount * reseller.commissionRate;
+  const [passes, tickets] = await Promise.all([
+    db.pass.findMany({
+      where: {
+        resellerId,
+        createdAt: { gte: startDate, lt: endDate },
+        status: { not: "refunded" },
+      },
+      select: { price: true },
+    }),
+    db.ticket.findMany({
+      where: {
+        resellerId,
+        createdAt: { gte: startDate, lt: endDate },
+        status: { not: "refunded" },
+      },
+      select: { pricePaid: true },
+    }),
+  ]);
+
+  const salesCount = passes.length + tickets.length;
+  const salesAmount =
+    passes.reduce((s, p) => s + p.price, 0) +
+    tickets.reduce((s, t) => s + t.pricePaid, 0);
+  const passCommission = passes.reduce(
+    (s, p) => s + resellerCommission(p.price, passTiers),
+    0
+  );
+  const ticketCommission = tickets.reduce(
+    (s, t) => s + resellerCommission(t.pricePaid, ticketTiers),
+    0
+  );
+  const commission = passCommission + ticketCommission;
 
   const halfLabel = half === 1 ? "January to June" : "July to December";
   const periodLabel = `H${half} ${year} — ${halfLabel}`;
@@ -72,8 +97,16 @@ export async function POST(req: NextRequest) {
                         <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(salesAmount)}</td>
                       </tr>
                       <tr>
-                        <td style="padding:12px 0 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Commission Due (${(reseller.commissionRate * 100).toFixed(0)}%)</td>
-                        <td style="padding:12px 0 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(commission)}</td>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Pass commission</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(passCommission)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Ticket commission</td>
+                        <td style="padding:12px 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${eurFmt.format(ticketCommission)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0 0;font-size:13px;color:#18181b;text-transform:uppercase;letter-spacing:0.5px;border-top:2px solid #18181b;font-weight:700;">Total commission due</td>
+                        <td style="padding:12px 0 0;font-size:16px;color:#18181b;font-weight:800;text-align:right;border-top:2px solid #18181b;">${eurFmt.format(commission)}</td>
                       </tr>
                     </table>
                   </td>
