@@ -1,117 +1,214 @@
 # Data Models Specification
 
-All models are defined in `prisma/schema.prisma` and managed via Prisma ORM on PostgreSQL.
+All models are defined in `prisma/schema.prisma` (Prisma 7 with PostgreSQL).
+Generated client lives at `src/generated/prisma/` and is always imported via
+`@/generated/prisma/client`. The runtime client is the singleton exported from
+`src/lib/db.ts`, which uses the `PrismaPg` driver adapter.
+
+Ten models, seven enums. Everything that mutates the DB should be routed
+through a server action in `src/app/dashboard/admin/_actions.ts` (admin-gated
+via `requireAdmin()`) or a purpose-specific API route — never a raw client
+call from the browser.
+
+## Enums
+
+| Enum | Values |
+|---|---|
+| `UserRole` | `admin`, `club`, `reseller`, `customer` |
+| `PassType` | `night`, `weekend` |
+| `PassStatus` | `purchased`, `active`, `expired`, `refunded` |
+| `TicketStatus` | `purchased`, `used`, `expired`, `refunded` |
+| `PricingPhaseName` | `early_bird`, `regular`, `last_minute` |
+| `DayOfWeek` | `friday`, `saturday`, `sunday` |
+| `PassInclusion` | `friday`, `saturday`, `both`, `weekend` |
 
 ## User
+
 | Field | Type | Notes |
-|-------|------|-------|
+|---|---|---|
 | id | cuid | Primary key |
-| email | string | Unique |
-| name | string? | Optional |
-| password | string? | Nullable for magic-link-only users |
-| role | enum | admin, club, reseller, customer |
-| createdAt | datetime | Auto |
-| updatedAt | datetime | Auto |
+| email | string | Unique, always stored trimmed + lowercased |
+| name | string? | Optional display name |
+| password | string? | bcrypt hash (12 rounds); nullable for users created without a login (magic link, guest pass, giveaway) |
+| role | UserRole | `customer` by default; `admin` grants all server-action access; `club` / `reseller` are access labels for their dashboards |
+| createdAt / updatedAt | datetime | Auto |
+
+Relations: `passes`, `tickets`, `reseller`, `clubAccounts`, `passScansDone`.
 
 ## Club
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
+|---|---|---|
+| id | cuid | |
 | name | string | Display name |
-| slug | string | URL-safe, unique |
-| address | string | Physical location |
-| description | text? | Long description |
-| pictures | string[] | Array of image URLs |
-| instagramUrl | string? | Social link |
-| facebookUrl | string? | Social link |
-| payPerVisit | float | Default 10 EUR — amount paid to club per pass scan |
-| openDays | DayOfWeek[] | friday, saturday, sunday |
-| passInclusion | enum | friday, saturday, both, weekend |
-| isActive | boolean | Soft delete / visibility toggle |
+| slug | string | Unique, URL-safe |
+| address | string | |
+| description | text? | |
+| pictures | string[] | Array of image URLs served from the Railway volume |
+| instagramUrl / facebookUrl / websiteUrl | string? | Social / official links |
+| payPerVisit | float | Default 10 EUR — payout per validated visit; most clubs are configured at 20 EUR |
+| openDays | DayOfWeek[] | Which days the club is open |
+| passInclusion | PassInclusion | Whether night/weekend passes include this club on which day |
+| musicTags | string[] | e.g. `HIP-HOP`, `TECHNO`, `HOUSE` |
+| dresscodeTags | string[] | e.g. `SMART`, `CLUB` |
+| openTime / closeTime | string? | 24h strings like `"22"` and `"4"`, rendered as `10pm - 4am` |
+| contactEmail | string? | Where quarterly reports are sent |
+| sortOrder | int | Manual ordering on /offer and club list pages |
+| isActive | boolean | Soft visibility toggle |
+| createdAt / updatedAt | datetime | |
+
+Relations: `events`, `passScans`, `clubAccounts`.
 
 ## Museum
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| name | string | Display name |
-| slug | string | URL-safe, unique |
-| address | string | Physical location |
-| description | text? | Long description |
-| pictures | string[] | Array of image URLs |
-| websiteUrl | string? | External link |
+|---|---|---|
+| id | cuid | |
+| name / slug | string | slug unique |
+| address / description | text | |
+| pictures | string[] | |
+| websiteUrl | string? | |
 | payPerVisit | float | Default 8 EUR |
-| isActive | boolean | Soft delete |
+| openDays | string[] | Free-form |
+| openTime / closeTime | string? | |
+| sortOrder | int | |
+| isActive | boolean | |
+| createdAt / updatedAt | datetime | |
+
+Relations: `passScans`.
 
 ## Pass
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| type | enum | night (24h, 29 EUR) or weekend (48h, 48 EUR) |
-| price | float | Actual price paid |
+|---|---|---|
+| id | cuid | The public-facing pass URL is `/pass/[id]` — the link is the credential |
+| type | PassType | |
+| price | float | Actual price paid; **0.0** for guest passes and giveaway claims |
 | userId | ref | Owner |
-| stripePaymentId | string? | Stripe payment reference |
-| status | enum | purchased, active, expired, refunded |
-| activatedAt | datetime? | Set on first scan |
-| expiresAt | datetime? | Calculated from activatedAt + duration |
-| resellerId | ref? | If sold through a reseller |
+| stripePaymentId | string? | Stripe payment intent for paid purchases. Also used as a source marker: `guest_<ts>` for admin-created guest passes, `giveaway_<slug>_<ts>` for passes claimed via a GiveawayForm |
+| status | PassStatus | |
+| activatedAt | datetime? | Set on first club scan |
+| expiresAt | datetime? | Set on first club scan using `computeExpiresAt(type, now)` |
+| resellerId | ref? | |
+| formId | ref? | Set when the pass was claimed via a `GiveawayForm`. FK preserves history even if the form is later deleted — delete detaches rather than cascades |
+| createdAt / updatedAt | datetime | |
+
+Indexes: `userId`, `resellerId`, `formId`, `status`.
 
 ## PassScan
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| passId | ref | Which pass |
-| clubId | ref? | If scanned at a club |
-| museumId | ref? | If scanned at a museum |
-| scannedAt | datetime | When the scan happened |
-| scannedBy | ref? | Staff user who performed the scan |
+|---|---|---|
+| id | cuid | |
+| passId | ref | |
+| clubId | ref? | Set for club check-ins |
+| museumId | ref? | Set for museum check-ins |
+| scannedAt | datetime | Default now() |
+| scannedBy | ref? | Optional staff user |
+
+Indexes: `passId`, `clubId`, `museumId`.
 
 ## Event
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| name | string | Event title |
-| description | text? | Event details |
-| coverImage | string? | Image URL |
-| clubId | ref | Host venue |
-| date | datetime | Event date |
-| isLinkedToPass | boolean | Whether pass holders get free entry |
+|---|---|---|
+| id | cuid | |
+| name | string | |
+| slug | string | Unique; events can have a club-specific fallback view at `/tickets/[club-slug]` |
+| description | text? | |
+| coverImage | string? | |
+| clubId | ref? | Host venue — optional so tickets can be sold for non-club events |
+| venueName / venueAddress | string? | Overrides the club's fields for one-off venues |
+| date | datetime | Stored as UTC but always parsed/displayed in Europe/Brussels via `src/lib/tz.ts` |
+| isLinkedToPass | boolean | If true, Weekend Pass holders enter free |
+| isActive | boolean | Soft delete; events with tickets sold are always soft-deleted to preserve history |
+| salesEnded | boolean | Manually halts new purchases while keeping the event visible |
+| createdAt / updatedAt | datetime | |
+
+Relations: `club`, `tickets`, `pricingPhases`.
+Indexes: `clubId`, `date`.
 
 ## Ticket
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| eventId | ref | Which event |
-| userId | ref | Ticket holder |
-| stripePaymentId | string? | Payment reference |
-| status | enum | purchased, used, expired, refunded |
-| pricePaid | float | Actual price at time of purchase |
-| pricingPhase | enum | early_bird, regular, last_minute |
-| resellerId | ref? | If sold through a reseller |
-| validatedAt | datetime? | When ticket was used for entry |
+|---|---|---|
+| id | cuid | The public-facing ticket URL is `/ticket/[id]` — link is the credential |
+| eventId | ref | |
+| userId | ref | |
+| stripePaymentId | string? | |
+| status | TicketStatus | |
+| pricePaid | float | Actual price at purchase time |
+| pricingPhase | PricingPhaseName | Which phase was active at purchase |
+| resellerId | ref? | |
+| validatedAt | datetime? | Set when door staff swipes; triggers club ticket revenue |
+| createdAt / updatedAt | datetime | |
+
+Indexes: `eventId`, `userId`, `resellerId`, `status`.
 
 ## PricingPhase
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| eventId | ref | Which event |
-| name | enum | early_bird, regular, last_minute |
-| price | float | Price in EUR |
-| startDate | datetime | Phase start |
-| endDate | datetime | Phase end |
+|---|---|---|
+| id | cuid | |
+| eventId | ref | |
+| name | PricingPhaseName | |
+| price | float | |
+| startDate | datetime | |
+| endDate | datetime | |
+
+Event form auto-chains phases: when phase N+1 starts before phase N ends, phase N is truncated to the next start. Default last-phase endDate is the event date at 23:59 Brussels.
 
 ## Reseller
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| userId | ref | Linked user account (unique) |
-| commissionRate | float | Default 0.08 (8%) |
-| magicLinkToken | string? | For passwordless dashboard access |
-| isActive | boolean | Active toggle |
+|---|---|---|
+| id | cuid | |
+| userId | ref | Unique |
+| commissionRate | float | Default 0.08 |
+| magicLinkToken | string? | Unique, cryptographically random; **never auto-expires**, only overwritten on manual regeneration |
+| isActive | boolean | |
+
+Relations: `user`, `passes`, `tickets`.
 
 ## ClubAccount
+
 | Field | Type | Notes |
-|-------|------|-------|
-| id | cuid | Primary key |
-| clubId | ref | Which club |
-| userId | ref | Which user has access |
-| magicLinkToken | string? | For passwordless dashboard access |
+|---|---|---|
+| id | cuid | |
+| clubId | ref | |
+| userId | ref | |
+| magicLinkToken | string? | Unique, cryptographically random; **never auto-expires**, only overwritten on manual regeneration |
+
+Indexes: `clubId`, `userId`.
+
+## Article
+
+| Field | Type | Notes |
+|---|---|---|
+| id | cuid | |
+| title | string | |
+| slug | string | Unique |
+| summary | text | Used for `/news` card + OG description |
+| content | text | Plain text, renders with smart link/image detection |
+| coverImage | string? | |
+| isPublished | boolean | Drafts are hidden from `/news` |
+| sortOrder | int | |
+| publishedAt | datetime | Default now() |
+| createdAt / updatedAt | datetime | |
+
+## GiveawayForm
+
+| Field | Type | Notes |
+|---|---|---|
+| id | cuid | |
+| slug | string | Unique, public URL is `/giveaway/[slug]` |
+| passType | PassType | Which pass the form hands out |
+| isActive | boolean | Toggle; inactive forms 404 publicly |
+| titleEn / descriptionEn / successMessageEn | string / text? / text? | English is required |
+| titleFr / descriptionFr / successMessageFr | string? / text? / text? | Optional French copy |
+| titleNl / descriptionNl / successMessageNl | string? / text? / text? | Optional Dutch copy |
+| createdAt / updatedAt | datetime | |
+
+Relations: `passes` — every pass issued via this form stores `formId` so we can count claims and preserve history. Delete detaches passes (`formId = null`) rather than cascades.
+
+Rule: one user email can only claim once per form (enforced in `submitGiveawayForm` by checking for an existing `Pass` with the same `userId` + `formId`).

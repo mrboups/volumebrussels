@@ -6,11 +6,21 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 **VOLUME Brussels** -- A nightlife pass and ticketing platform for Brussels clubs and museums. Users buy 24h or 48h passes granting club entry, plus museum access. Individual event tickets are also planned. Staff validate entry via swipe gestures on the user's phone (no QR codes).
 
-Previously built on Softr + Airtable. Now rebuilt from scratch as a full-stack Next.js application with PostgreSQL.
+Previously built on Softr + Airtable. Now rebuilt from scratch as a full-stack Next.js application with PostgreSQL. **In production — the DB holds real customer data and real money has moved through Stripe.**
 
-- **Live**: https://volumebrussels-production-157d.up.railway.app
+- **Live**: https://volumebrussels.com
 - **Repo**: https://github.com/mrboups/volumebrussels
 - **Branch strategy**: `main` is production (Railway auto-deploys on push)
+
+### Canonical docs — read these before making changes
+
+- `dev/architecture.md` — route map, module boundaries, request topology, data flows
+- `dev/security-audit.md` — full audit findings + current fix status per finding
+- `specs/data-models.md` — every Prisma model with its current fields (10 models)
+- `specs/api-schema.md` — every API route with its auth model
+- `specs/business-logic.md` — pass lifecycle, giveaway rules, financial model, magic-link rule
+
+Keep all five files updated on every non-trivial change. Stale docs in this project are treated the same as broken code.
 
 ## Tech Stack
 
@@ -37,43 +47,30 @@ Previously built on Softr + Airtable. Now rebuilt from scratch as a full-stack N
 
 ### Route Groups
 
-```
-src/app/
-  (public)/              # Public-facing pages (Navbar + Footer layout)
-    page.tsx             # Homepage -- hero section + pricing cards
-    offer/page.tsx       # Club listing -- fetches from DB, renders OfferCards
-    agenda/page.tsx      # Live event feed from agenda.be API
-    layout.tsx           # Wraps children with Navbar + Footer
-  (auth)/                # Auth pages (no shared layout yet)
-    login/page.tsx       # Login page (SCAFFOLD ONLY)
-    register/page.tsx    # Register page (SCAFFOLD ONLY)
-  dashboard/             # Protected dashboards (shared layout)
-    layout.tsx           # Dashboard layout wrapper
-    admin/page.tsx       # Admin dashboard (SCAFFOLD ONLY)
-    club/page.tsx        # Club dashboard (SCAFFOLD ONLY)
-    accounting/page.tsx  # Accounting dashboard (SCAFFOLD ONLY)
-    reseller/page.tsx    # Reseller dashboard (SCAFFOLD ONLY)
-  pass/[id]/page.tsx     # Pass web app -- user shows to staff (SCAFFOLD ONLY)
-  ticket/[id]/page.tsx   # Ticket web app -- user shows to staff (SCAFFOLD ONLY)
-  api/
-    auth/route.ts        # Auth endpoints (SCAFFOLD ONLY)
-    clubs/route.ts       # Club CRUD
-    museums/route.ts     # Museum CRUD
-    offers/route.ts      # Aggregated listings
-    passes/route.ts      # Pass GET (by userId) + POST (create)
-    tickets/route.ts     # Ticket CRUD
-    webhooks/stripe/     # Stripe webhook -- signature verified, handlers stubbed
-  layout.tsx             # Root layout (Montserrat font, Tailwind globals)
-```
+See `dev/architecture.md` for the full route map and request topology. Summary:
+
+- `(public)/` — home, offer, agenda, news, museums, buy-ticket, privacy, terms
+- `(auth)/` — login, register
+- `dashboard/` — admin, club, accounting, reseller, passes, tickets, users (server `layout.tsx` adds noindex metadata, `DashboardShell.tsx` is the client nav)
+- `pass/[id]/` and `ticket/[id]/` — customer-facing pass / ticket pages (link = credential)
+- `passes/manage/[paymentId]/` — multi-pass assignment after checkout
+- `giveaway/[slug]/` — public multilingual giveaway forms
+- `events-links/` — internal event sale URL list
+- `scan-setup/` does NOT exist and must not be reintroduced (see the Check-in Critical block below)
+- `api/` — 20+ routes; every admin / mutating route is gated (see `specs/api-schema.md`)
 
 ### Lib Modules
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `src/lib/db.ts` | Prisma client singleton with PrismaPg adapter, dev query logging | WORKING |
-| `src/lib/stripe.ts` | Lazy Stripe client init with API version `2026-03-25.dahlia` | WORKING (client only, no checkout flow) |
-| `src/lib/email.ts` | Lazy Resend client init, exports `FROM_EMAIL` constant | WORKING (client only, no templates) |
-| `src/lib/auth.ts` | bcrypt hash/verify, JWT magic link token generation/verification | WORKING (utils only, no session management) |
+| File | Purpose |
+|---|---|
+| `src/lib/db.ts` | Prisma client singleton with `PrismaPg` driver adapter |
+| `src/lib/auth.ts` | bcrypt hash/verify, JWT `generateToken` / `verifyToken`, `generateMagicLinkToken` |
+| `src/lib/session.ts` | `getCurrentUser`, **`requireAdmin()`** (throws on non-admin — used at the top of every admin server action), **`isAdminRequest()`** (boolean for API routes) |
+| `src/lib/stripe.ts` | Lazy Stripe client init |
+| `src/lib/email.ts` | Resend client, `sendPassEmail` (with `isGuest` flag), `sendTicketEmail` |
+| `src/lib/tz.ts` | Europe/Brussels parsing, formatting, and the `getVisibilityCutoff()` helper used on `/tickets` + `/tickets/[slug]` |
+| `src/lib/scanGuard.ts` | `checkSameOrigin` + `rateLimit` for `/api/scan` and `/api/tickets/validate` |
+| `src/lib/rateLimiter.ts` | Shared sliding-window rate limiter; used by both `scanGuard` and `/api/auth` |
 
 ### Components
 
@@ -84,7 +81,51 @@ src/app/
 | `OfferCard.tsx` | Club card with image, name, description, Instagram/Facebook links |
 | `PricingCard.tsx` | Pass pricing card (title, price, features, buy button) |
 
-## Database Models (10 total)
+## Feature inventory (as of 2026-04-11)
+
+Everything in this list is **live and functional**, not scaffolded. When in doubt about specifics, check the spec files listed above — this is just the navigator.
+
+**Customer-facing**
+- Home with hero, pricing, news carousel, clubs preview
+- `/offer` — clubs + museums cards (OfferCard component) with music tags, dresscode, hours, social links
+- `/agenda` — external agenda.be feed
+- `/news` + `/news/[slug]` — article listing + detail with smart RichText rendering (auto-links + inline images)
+- `/museums` — standalone museum listing
+- `/buy-ticket` — pass + ticket purchase entry, Stripe Checkout Session flow, adjustable quantity 1..10
+- `/tickets` + `/tickets/[slug]` — event listings with an "Upcoming" grid and a muted "Past Events" archive section below (2h-after-day+1 cutoff)
+- `/pass/[id]`, `/ticket/[id]` — customer swipe surfaces
+- `/passes/manage/[paymentId]` — multi-pass assignment (extra passes in a multi-purchase can be assigned to other emails)
+- `/giveaway/[slug]` — public multilingual giveaway form (EN / FR / NL), one free pass per user per form, localized success + error messages
+- Public routes all have per-page SEO metadata, canonical URLs, OG tags, and explicit `robots: index, follow`
+
+**Admin**
+- `/dashboard/admin` — overview with Recent Passes (grouped by `stripePaymentId`, guest/giveaway badges), Recent Tickets, Recent Scans, "Add Guest Pass" and "Buy Test Pass" buttons
+- `/dashboard/admin/clubs`, `.../museums` — CRUD with image upload (react-image-crop), sort order, contact email, tags, hours
+- `/dashboard/admin/events` — CRUD with auto-chained pricing phases, soft-delete when tickets exist, toggle-sales button
+- `/dashboard/admin/articles` — CRUD with AI content generation
+- `/dashboard/admin/giveaways` — CRUD with language tabs and a **"Translate with AI"** button that calls `/api/ai/translate`
+- `/dashboard/admin/resellers` — CRUD, magic-link generation
+- `/dashboard/admin/reports` — quarterly club report + half-yearly reseller report, Send button
+
+**Top-level dashboard sections** (next to Admin / Club / Accounting / Reseller)
+- `/dashboard/passes` — searchable pass list (up to 500 rows), same actions as Recent Passes (View / Resend / Edit email)
+- `/dashboard/tickets` — searchable ticket list (same pattern)
+- `/dashboard/users` — searchable user list with expandable rows showing each user's full pass + ticket purchase history, total spent, and inline View links
+
+**Club dashboard**
+- Magic-link filtered to one club when `?token=...` is present
+- Pass stats + ticket stats + combined total (visited tickets = 100% of `pricePaid` → club, unvisited = stays with Volume)
+- "Recent Ticket Check-ins" table
+- Quarterly reports with ticket columns
+- No internal caveats shown to the club (internal-only text is kept out of club-visible templates)
+
+**Accounting dashboard**
+- Split `Pass Revenue` + `Ticket Revenue`
+- Club payouts = pass (visits × payPerVisit) + validated ticket revenue
+- Platform revenue = Total − Club − Museum payouts
+- Transaction detail table
+
+## Database Models (11 total)
 
 ### Enums
 
@@ -100,18 +141,22 @@ src/app/
 
 ### Models
 
-| Model | Purpose | Key Fields |
-|-------|---------|------------|
-| **User** | All user accounts (customers, admins, club staff, resellers) | email (unique), password, role |
-| **Club** | Nightclub venues | name, slug (unique), payPerVisit (default 10), openDays[], passInclusion |
-| **Museum** | Museum venues | name, slug (unique), payPerVisit (default 8) |
-| **Pass** | Purchased passes (night/weekend) | type, price, status, activatedAt, expiresAt, userId, resellerId |
-| **PassScan** | Records each club/museum check-in on a pass | passId, clubId OR museumId, scannedAt, scannedBy |
-| **Event** | Club events (for individual ticket sales) | name, date, clubId, isLinkedToPass |
-| **Ticket** | Individual event tickets | eventId, userId, pricePaid, pricingPhase, validatedAt |
-| **PricingPhase** | Tiered pricing per event | eventId, name (early_bird/regular/last_minute), price, startDate, endDate |
-| **Reseller** | Reseller accounts with commission tracking | userId (unique), commissionRate (default 8%), magicLinkToken |
-| **ClubAccount** | Links club staff users to their club | clubId, userId, magicLinkToken |
+Full schema lives in `prisma/schema.prisma`. Authoritative spec in `specs/data-models.md`.
+
+| Model | Purpose | Key fields added post-scaffold |
+|---|---|---|
+| **User** | All accounts — emails always normalized (trim + lowercase) | role, password (bcrypt 12) |
+| **Club** | Nightclub venues | `sortOrder`, `contactEmail`, `musicTags[]`, `dresscodeTags[]`, `openTime`, `closeTime`, `passInclusion` |
+| **Museum** | Museum venues | `openDays[]`, `openTime`, `closeTime`, `sortOrder` |
+| **Pass** | Purchased / guest / giveaway passes | `formId` FK to `GiveawayForm`, `stripePaymentId` source prefix marker |
+| **PassScan** | Club/museum check-in | unchanged |
+| **Event** | Events with ticket sales | `salesEnded`, `slug`, `isActive` (soft delete when tickets exist) |
+| **Ticket** | Event tickets | `validatedAt` drives club ticket revenue |
+| **PricingPhase** | Tiered event pricing | auto-chained in the event form |
+| **Reseller** | Reseller accounts | `magicLinkToken` (never auto-expires) |
+| **ClubAccount** | Club staff access | `magicLinkToken` (never auto-expires) |
+| **GiveawayForm** | Public multilingual giveaway forms | `titleEn/Fr/Nl`, `descriptionEn/Fr/Nl`, `successMessageEn/Fr/Nl`, `passType`, `isActive` |
+| **Article** | News articles | `coverImage`, `isPublished`, `sortOrder` |
 
 ## Key Business Rules
 
@@ -233,15 +278,18 @@ staff-credential model is not fine.
 ## Environment Variables
 
 | Variable | Purpose |
-|----------|---------|
+|---|---|
 | `DATABASE_URL` | PostgreSQL connection string (Railway provides public URL for build, internal for runtime) |
-| `STRIPE_SECRET_KEY` | Stripe API secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_SECRET_KEY` | Stripe API secret key (live) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret — required for `/api/webhooks/stripe` |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (client-side) |
 | `RESEND_API_KEY` | Resend email API key |
-| `NEXTAUTH_SECRET` | JWT signing secret (used by auth.ts for magic links and tokens) |
+| `OPENAI_API_KEY` | OpenAI API key — used by `/api/ai` and `/api/ai/translate` (admin-only) |
+| `NEXTAUTH_SECRET` | JWT signing secret (used by `src/lib/auth.ts`) |
 | `NEXTAUTH_URL` | Base URL of the application |
-| `NEXT_PUBLIC_APP_URL` | Public-facing app URL (client-side) |
+| `NEXT_PUBLIC_APP_URL` | Public-facing app URL — also used by `scanGuard.checkSameOrigin()` |
+| `CRON_SECRET` | Required by `/api/cron` (pass expiry) — endpoint fails closed when missing |
+| `RAILWAY_VOLUME_MOUNT_PATH` | Railway volume mount for image uploads (`/data`), serves `/uploads/*` |
 
 ## Commands
 
@@ -275,38 +323,13 @@ railway logs             # Check logs
 railway variables        # Manage env vars
 ```
 
-## Build Status: What's Working vs TODO
+## Build Status
 
-### BUILT (functional, deployed)
-
-- Full project scaffold with all routes and API endpoints
-- PostgreSQL database schema (10 models, all migrations applied)
-- Seed script with 9 real clubs + 6 real museums
-- **Homepage** -- hero section with value props, pricing cards for Night/Weekend pass
-- **Offer page** -- dynamic, fetches clubs from DB, renders cards with images and social links
-- **Agenda page** -- fetches live events from agenda.be API, renders event grid with posters
-- **Navbar** -- responsive with mobile hamburger, links to Offer/Agenda, Buy Ticket CTA
-- **Footer** -- branding and copyright
-- **API routes** -- clubs, museums, offers, passes (GET/POST), tickets, auth (scaffolded)
-- **Stripe webhook** -- signature verification working, event handlers stubbed
-- **Lib modules** -- db.ts (Prisma singleton), stripe.ts, email.ts, auth.ts (hash/verify/JWT)
-- **Club and museum images** -- all 15 venue images in `public/`
-
-### TODO (scaffolded but not implemented)
-
-- **Stripe checkout flow** -- no Checkout Session creation, no redirect, PricingCard links to `#`
-- **Stripe webhook handlers** -- signature works but `checkout.session.completed` just logs, no Pass/Ticket creation
-- **Email sending** -- Resend client exists but no email templates or send calls
-- **Pass web app** (`/pass/[id]`) -- shell page only, no swipe UI, no activation logic, no scan recording
-- **Ticket web app** (`/ticket/[id]`) -- shell page only, no validation UI
-- **Auth system** -- login/register pages are scaffolds, no forms, no session management, no middleware
-- **Admin dashboard** -- placeholder text only
-- **Club dashboard** -- placeholder text only
-- **Accounting dashboard** -- placeholder text only
-- **Reseller dashboard** -- placeholder text only
-- **Reseller URL tracking** -- no parameter capture or attribution
-- **Pass activation logic** -- no server-side activation/expiry calculation
-- **Museum page** -- no dedicated museum listing page (only clubs shown on /offer)
+**The full feature set is built, deployed, and taking real money.** See the
+"Feature inventory" block above for the authoritative list. The only known
+open items are the Medium-severity security follow-ups listed in
+`dev/security-audit.md` (M2 session revocation, M6 email disclosure on
+`/passes/manage`, future strict CSP with nonces).
 
 ## Project Structure
 
@@ -367,6 +390,30 @@ volumebrussels/
 - **Prisma seed for initial data** -- `npm run db:seed` to populate clubs and museums.
 - **Import paths** -- use `@/` alias (mapped to `src/`).
 - **No Docker** -- native runtime for local dev, Railway builds directly.
+
+## Security Posture
+
+Full report: **`dev/security-audit.md`**. Summary of the most recent audit (2026-04-11):
+
+- **All 3 Critical findings fixed.** Admin server actions are gated by `requireAdmin()`, `/api/scan` and `/api/tickets/validate` are defended by `scanGuard` (same-origin + rate limit), `/api/magic-link` requires admin.
+- **All 5 High findings fixed or intentionally accepted.** Reports / assign / cron / upload are closed; H2 (tokens never auto-expire) is accepted as a product rule.
+- **Medium — M1, M3, M4, M5 closed.** M2 (90-day JWT revocation) and M6 (email disclosure on `/passes/manage`) are open.
+
+### Non-negotiable security rules
+
+1. **Every exported function in `src/app/dashboard/admin/_actions.ts` must start with `await requireAdmin();`.** The public `submitGiveawayForm` is the only exception. The middleware alone does not protect server actions — the helper must be called explicitly.
+2. **Every mutating API route** (write, delete, email-send) must either:
+   - Call `isAdminRequest()` and return 403 on failure, OR
+   - Verify an alternative ownership proof (e.g. `/api/passes/assign` checks `paymentId`), OR
+   - Validate the Stripe webhook signature (for `/api/webhooks/stripe`).
+3. **Magic links and pass/ticket URLs never auto-expire.** They are valid forever until manually regenerated (for club/reseller tokens) or replaced by a new purchase. Do not add TTLs to any of them without explicit product approval.
+4. **Rate limiting uses `src/lib/rateLimiter.ts`.** Do not write parallel in-memory limiters — refactor and reuse.
+5. **Scan endpoints only get `scanGuard` — never a staff credential.** See the Check-in Critical block below.
+6. **Email is always `trim().toLowerCase()`** before a DB lookup or write. User lookup by raw casing is forbidden — it creates duplicate accounts.
+7. **Upload extension comes from the validated MIME type**, not the user-supplied filename. Never trust `file.name`.
+8. **Cron and any future secret-guarded endpoint must fail closed when the env var is missing.** Inverted "skip if unset" checks are a bug.
+9. **Baseline response headers live in `next.config.ts → headers()`.** Do not disable them per route. Strict CSP is deliberately not set until the third-party script layer is refactored with nonces.
+10. **Do not seed / reset / `deleteMany` in production.** See the DB Data Protection block below.
 
 ## Production-Only Rule
 
