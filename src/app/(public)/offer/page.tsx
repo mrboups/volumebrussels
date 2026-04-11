@@ -1,7 +1,35 @@
 import OfferCard from "@/components/OfferCard";
 import { db } from "@/lib/db";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Offer — Clubs and museums included in the Volume Pass",
+  description:
+    "Discover the Brussels clubs and museums you can access with your Volume Pass: Fuse, C12, Spirito, Mirano, Madame Moustache, Atomium and more.",
+  alternates: { canonical: "https://volumebrussels.com/offer" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: "Offer — Clubs and museums included in the Volume Pass",
+    description:
+      "Every club and museum you can access with one Volume Pass in Brussels.",
+    url: "https://volumebrussels.com/offer",
+    siteName: "Volume Brussels",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/hero.png", width: 1200, height: 630, alt: "Volume Brussels" }],
+  },
+};
 
 export default async function OfferPage() {
   let clubs: Awaited<ReturnType<typeof db.club.findMany>> = [];

@@ -1,8 +1,58 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await db.article.findUnique({ where: { slug } });
+  if (!article || !article.isPublished) {
+    return { title: "Article not found" };
+  }
+  const url = `https://volumebrussels.com/news/${article.slug}`;
+  const description =
+    article.summary?.slice(0, 200) ||
+    article.content.slice(0, 200).replace(/\n/g, " ");
+  const image = article.coverImage || "/hero.png";
+  return {
+    title: article.title,
+    description,
+    alternates: { canonical: url },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+    openGraph: {
+      title: article.title,
+      description,
+      url,
+      siteName: "Volume Brussels",
+      type: "article",
+      locale: "en_US",
+      publishedTime: article.publishedAt.toISOString(),
+      modifiedTime: article.updatedAt.toISOString(),
+      images: [{ url: image, alt: article.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function ArticlePage({
   params,

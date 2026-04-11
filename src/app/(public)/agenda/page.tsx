@@ -52,6 +52,35 @@ function formatDate(dateStr: string): string {
   });
 }
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Agenda — Brussels nightlife events this weekend",
+  description:
+    "Upcoming parties, concerts and club nights in Brussels. Find every weekend event across the clubs partnered with Volume Brussels.",
+  alternates: { canonical: "https://volumebrussels.com/agenda" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: "Agenda — Brussels nightlife events this weekend",
+    description:
+      "Upcoming parties, concerts and club nights in Brussels.",
+    url: "https://volumebrussels.com/agenda",
+    siteName: "Volume Brussels",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/hero.png", width: 1200, height: 630, alt: "Volume Brussels" }],
+  },
+};
+
 export default async function AgendaPage() {
   const events = await getEvents();
 

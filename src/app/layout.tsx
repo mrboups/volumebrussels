@@ -39,9 +39,8 @@ export const metadata: Metadata = {
     icon: "/favicon.png",
     apple: "/favicon.png",
   },
-  alternates: {
-    canonical: "https://volumebrussels.com/",
-  },
+  // Canonical is intentionally set per-page so every indexable page
+  // claims its own URL rather than inheriting the homepage canonical.
   openGraph: {
     title: "Volume Brussels | Nightlife Pass",
     description:

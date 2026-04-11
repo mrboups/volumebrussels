@@ -5,8 +5,24 @@ import VideoOverlay from "@/components/VideoOverlay";
 import EmbedSocial from "@/components/EmbedSocial";
 import NewsCarousel from "@/components/NewsCarousel";
 import { db } from "@/lib/db";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  // Title inherits the root default ("Volume Brussels | One night access pass...")
+  alternates: { canonical: "https://volumebrussels.com/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
 
 /* ── Agenda types & helpers ── */
 

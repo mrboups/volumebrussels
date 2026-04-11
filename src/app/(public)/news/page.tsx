@@ -1,7 +1,35 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "News — Brussels nightlife, clubs and culture",
+  description:
+    "Articles about Brussels nightlife, club scene, electronic music, city attractions and the Volume Pass.",
+  alternates: { canonical: "https://volumebrussels.com/news" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: "News — Brussels nightlife, clubs and culture",
+    description:
+      "Articles about Brussels nightlife, club scene, electronic music and culture.",
+    url: "https://volumebrussels.com/news",
+    siteName: "Volume Brussels",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/hero.png", width: 1200, height: 630, alt: "Volume Brussels" }],
+  },
+};
 
 export default async function NewsIndexPage() {
   const articles = await db.article.findMany({
