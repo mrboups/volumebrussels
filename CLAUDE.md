@@ -155,11 +155,39 @@ Default 10 EUR per visit. Most seeded clubs are configured at 20 EUR. Configurab
 
 Events support three pricing phases: `early_bird`, `regular`, `last_minute`. Each phase has its own price and date range.
 
-### Check-in (Swipe Validation)
+### Check-in (Swipe Validation) — CRITICAL model
 
-- No QR codes. User shows `/pass/[id]` or `/ticket/[id]` on their phone.
-- Staff swipes to validate.
-- Swipe creates a `PassScan` record (for passes) or sets `Ticket.validatedAt` (for tickets).
+**The system never uses a scanner device. There is no staff app, no scanner
+hardware, no separate scanning device of any kind.**
+
+The actual flow, once and for all:
+
+1. The customer arrives at the club / venue with their own phone.
+2. The customer opens `/pass/[id]` or `/ticket/[id]` on their phone (from the
+   email we sent them after purchase). This is a public URL — the link is
+   the credential, same model as any e-ticket QR code.
+3. The customer **physically hands their phone to the door staff**.
+4. Door staff swipes the slider on the customer's phone screen to check the
+   user in.
+5. The swipe triggers a client-side fetch from the customer's phone to
+   `/api/scan` (for passes) or `/api/tickets/validate` (for tickets).
+6. The server records a `PassScan` row (for passes) or sets
+   `Ticket.validatedAt = now()` and `Ticket.status = "used"` (for tickets).
+
+**Do NOT ever propose, build, or assume any of the following**, because they
+do not match reality:
+
+- A separate staff scanner device or staff phone
+- A scanner credential stored on a staff device
+- An `X-Scan-Secret` / `SCAN_SECRET` / staff-bearer-token flow
+- A `/scan-setup` page or any "configure this device first" onboarding
+- NFC, QR, or camera-based cross-device scanning
+- Any requirement that the swipe request comes from anywhere other than
+  the customer's own `/pass/[id]` or `/ticket/[id]` page
+
+The only defense on the swipe endpoints is `src/lib/scanGuard.ts`
+(same-origin + per-IP rate limit). Extending that is fine. Reintroducing a
+staff-credential model is not fine.
 
 ## Current Data (Seeded)
 
