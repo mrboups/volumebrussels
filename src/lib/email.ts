@@ -313,3 +313,108 @@ export async function sendTicketEmail({
 
   return result.data;
 }
+
+interface SendRefundEmailParams {
+  to: string;
+  itemType: "pass" | "ticket";
+  itemLabel: string; // "Night Pass", "BLUR EXTENDED invites Cartulis", etc.
+  amount: number; // euros
+  customerName?: string;
+}
+
+export async function sendRefundEmail({
+  to,
+  itemType,
+  itemLabel,
+  amount,
+  customerName,
+}: SendRefundEmailParams) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://volumebrussels.com";
+  const greeting = customerName ? `Hi ${customerName},` : "Hi there,";
+  const eurFmt = new Intl.NumberFormat("fr-BE", {
+    style: "currency",
+    currency: "EUR",
+  });
+  const formattedAmount = eurFmt.format(amount);
+  const subject =
+    itemType === "pass"
+      ? `Volume Brussels — Your pass has been refunded`
+      : `Volume Brussels — Your ticket has been refunded`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background-color:#18181b;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:1px;">VOLUME</h1>
+              <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Refund Confirmation</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px;">
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#18181b;">${greeting}</p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#18181b;">
+                We have processed a refund for your <strong>${itemLabel}</strong>.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e4e4e7;border-radius:6px;margin:24px 0;">
+                <tr>
+                  <td style="padding:24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:0 0 12px;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;">Item</td>
+                        <td style="padding:0 0 12px;font-size:15px;color:#18181b;font-weight:600;text-align:right;">${itemLabel}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 0 0;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid #e4e4e7;">Refund amount</td>
+                        <td style="padding:12px 0 0;font-size:15px;color:#18181b;font-weight:600;text-align:right;border-top:1px solid #e4e4e7;">${formattedAmount}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#3f3f46;">
+                The refund will appear on the original card within 5 to 10 business days depending on your bank.
+              </p>
+              <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717a;">
+                Any questions? Reply to this email and we will get back to you.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px;background-color:#fafafa;border-top:1px solid #e4e4e7;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#a1a1aa;">VOLUME Brussels</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#a1a1aa;">
+                <a href="${appUrl}" style="color:#1a7fc7;text-decoration:none;">volumebrussels.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const resend = getResend();
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+
+  if (result.error) {
+    throw new Error(`Resend error: ${result.error.message}`);
+  }
+
+  return result.data;
+}

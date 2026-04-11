@@ -102,9 +102,15 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <Link
+              href={`/dashboard/admin/passes/${pass.id}`}
+              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+            >
+              Details
+            </Link>
+            <Link
               href={`/pass/${pass.id}`}
               target="_blank"
-              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+              className="text-gray-500 hover:text-gray-700 text-xs font-medium"
             >
               View
             </Link>
@@ -161,9 +167,16 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <Link
+              href={`/dashboard/admin/passes/${first.id}`}
+              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Details
+            </Link>
+            <Link
               href={`/pass/${first.id}`}
               target="_blank"
-              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+              className="text-gray-500 hover:text-gray-700 text-xs font-medium"
               onClick={(e) => e.stopPropagation()}
             >
               View
@@ -204,13 +217,21 @@ export default function PassGroup({ passes }: { passes: SerializedPass[] }) {
               {pass._count.scans}
             </td>
             <td className="px-4 py-2">
-              <Link
-                href={`/pass/${pass.id}`}
-                target="_blank"
-                className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-              >
-                View
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/dashboard/admin/passes/${pass.id}`}
+                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                >
+                  Details
+                </Link>
+                <Link
+                  href={`/pass/${pass.id}`}
+                  target="_blank"
+                  className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                >
+                  View
+                </Link>
+              </div>
             </td>
           </tr>
         ))}

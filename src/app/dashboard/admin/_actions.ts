@@ -891,6 +891,156 @@ export async function undoTicketValidation(ticketId: string) {
   return { success: true };
 }
 
+// --------------- REFUNDS ---------------
+
+/** Returns true if a stripePaymentId refers to an actual Stripe charge. */
+function isRealStripePayment(stripePaymentId: string | null): boolean {
+  return !!stripePaymentId && stripePaymentId.startsWith("pi_");
+}
+
+/**
+ * Refund a pass.
+ *
+ * - Refuses if already refunded.
+ * - If the pass was paid via Stripe (stripePaymentId starts with `pi_`),
+ *   issues a partial refund for the pass's price against that PaymentIntent.
+ *   Multi-pass purchases share one PaymentIntent, so this refunds only the
+ *   portion attributable to this pass. Stripe tracks the remaining
+ *   refundable amount automatically.
+ * - Otherwise (guest / giveaway / legacy) no Stripe call — local mark only.
+ * - On success, sets pass.status = "refunded" and sends a refund email to
+ *   the customer (paid passes only).
+ * - If the Stripe refund fails, the DB is NOT touched.
+ */
+export async function refundPass(passId: string) {
+  await requireAdmin();
+
+  const pass = await db.pass.findUnique({
+    where: { id: passId },
+    include: { user: true },
+  });
+  if (!pass) return { error: "Pass not found" };
+  if (pass.status === "refunded") return { error: "Pass already refunded" };
+
+  const stripeRefundable = isRealStripePayment(pass.stripePaymentId);
+
+  // Stripe first, DB second.
+  if (stripeRefundable && pass.price > 0) {
+    try {
+      const { getStripe } = await import("@/lib/stripe");
+      const stripe = getStripe();
+      await stripe.refunds.create({
+        payment_intent: pass.stripePaymentId!,
+        amount: Math.round(pass.price * 100),
+      });
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error
+            ? `Stripe refund failed: ${err.message}`
+            : "Stripe refund failed",
+      };
+    }
+  }
+
+  await db.pass.update({
+    where: { id: passId },
+    data: { status: "refunded" },
+  });
+
+  // Notify customer only if they actually paid money.
+  if (stripeRefundable && pass.price > 0) {
+    try {
+      const { sendRefundEmail } = await import("@/lib/email");
+      await sendRefundEmail({
+        to: pass.user.email,
+        itemType: "pass",
+        itemLabel: pass.type === "night" ? "Night Pass" : "Weekend Pass",
+        amount: pass.price,
+        customerName: pass.user.name || undefined,
+      });
+    } catch (err) {
+      // Don't fail the refund if email fails; log and continue.
+      console.error("[refundPass] email send failed:", err);
+    }
+  }
+
+  console.log(
+    `[audit] refundPass passId=${passId} price=${pass.price} stripePaymentId=${pass.stripePaymentId}`
+  );
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/passes");
+  revalidatePath("/dashboard/users");
+  revalidatePath(`/dashboard/admin/passes/${passId}`);
+  revalidatePath(`/pass/${passId}`);
+  return { success: true, stripeRefundable };
+}
+
+/**
+ * Refund a ticket. Same pattern as refundPass.
+ */
+export async function refundTicket(ticketId: string) {
+  await requireAdmin();
+
+  const ticket = await db.ticket.findUnique({
+    where: { id: ticketId },
+    include: { user: true, event: true },
+  });
+  if (!ticket) return { error: "Ticket not found" };
+  if (ticket.status === "refunded") return { error: "Ticket already refunded" };
+
+  const stripeRefundable = isRealStripePayment(ticket.stripePaymentId);
+
+  if (stripeRefundable && ticket.pricePaid > 0) {
+    try {
+      const { getStripe } = await import("@/lib/stripe");
+      const stripe = getStripe();
+      await stripe.refunds.create({
+        payment_intent: ticket.stripePaymentId!,
+        amount: Math.round(ticket.pricePaid * 100),
+      });
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error
+            ? `Stripe refund failed: ${err.message}`
+            : "Stripe refund failed",
+      };
+    }
+  }
+
+  await db.ticket.update({
+    where: { id: ticketId },
+    data: { status: "refunded" },
+  });
+
+  if (stripeRefundable && ticket.pricePaid > 0) {
+    try {
+      const { sendRefundEmail } = await import("@/lib/email");
+      await sendRefundEmail({
+        to: ticket.user.email,
+        itemType: "ticket",
+        itemLabel: ticket.event.name,
+        amount: ticket.pricePaid,
+        customerName: ticket.user.name || undefined,
+      });
+    } catch (err) {
+      console.error("[refundTicket] email send failed:", err);
+    }
+  }
+
+  console.log(
+    `[audit] refundTicket ticketId=${ticketId} pricePaid=${ticket.pricePaid} stripePaymentId=${ticket.stripePaymentId}`
+  );
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/tickets");
+  revalidatePath("/dashboard/users");
+  revalidatePath(`/ticket/${ticketId}`);
+  return { success: true, stripeRefundable };
+}
+
 // --------------- GUEST PASS ---------------
 
 export async function createGuestPass(formData: FormData) {

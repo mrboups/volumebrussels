@@ -6,15 +6,22 @@ import {
   updateTicketEmail,
   undoTicketValidation,
 } from "../_actions";
+import RefundButton from "./RefundButton";
 
 export default function TicketActions({
   ticketId,
   currentEmail,
   isValidated = false,
+  isRefunded = false,
+  price = 0,
+  isStripeBacked = false,
 }: {
   ticketId: string;
   currentEmail: string;
   isValidated?: boolean;
+  isRefunded?: boolean;
+  price?: number;
+  isStripeBacked?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -120,6 +127,15 @@ export default function TicketActions({
                 </button>
               )}
             </>
+          )}
+          {!isRefunded && (
+            <RefundButton
+              target="ticket"
+              id={ticketId}
+              amount={price}
+              isStripeBacked={isStripeBacked}
+              compact
+            />
           )}
         </>
       ) : (

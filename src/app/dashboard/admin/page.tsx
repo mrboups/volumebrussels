@@ -247,6 +247,12 @@ export default async function AdminDashboardPage() {
                           ticketId={ticket.id}
                           currentEmail={ticket.user.email}
                           isValidated={ticket.validatedAt !== null}
+                          isRefunded={ticket.status === "refunded"}
+                          price={ticket.pricePaid}
+                          isStripeBacked={
+                            !!ticket.stripePaymentId &&
+                            ticket.stripePaymentId.startsWith("pi_")
+                          }
                         />
                       </div>
                     </td>
